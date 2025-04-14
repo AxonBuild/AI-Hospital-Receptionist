@@ -39,8 +39,7 @@ def create_session(filename, section, variable):
         stream_audio(ws)
         
     def on_message(ws, message):
-        message = ws.recv()
-        print("Raw message received:", message)
+        print("Raw message received")
         data = json.loads(message)
         print(data)
         if data.get("type") == "transcript":
