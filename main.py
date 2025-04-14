@@ -23,7 +23,7 @@ def create_session_app(filename, section, variable):
         "type": "start",
         "audio": {
             "format": "pcm16",
-            "sample_rate": 16000
+            "sample_rate": 24000
             }
         }
         ws.send(json.dumps(start_message))
@@ -84,7 +84,7 @@ def stream_audio(ws):
         }))
             
     # Start recording
-    with sd.InputStream(samplerate=16000, channels=1, dtype='int16',
+    with sd.InputStream(samplerate=24000, channels=1, dtype='int16',
                         blocksize=3200, callback=callback):
         print("Listening... Speak now.")
         while True:
