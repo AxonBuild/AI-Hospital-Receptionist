@@ -7,7 +7,7 @@ import time
 import base64
 
 #made for extracting data from .ini files
-def create_session(filename, section, variable):
+def create_session_app(filename, section, variable):
     config = configparser.ConfigParser()
     config.read(filename)
     api_key = config[section][variable]
@@ -17,7 +17,6 @@ def create_session(filename, section, variable):
         "Authorization: Bearer " + api_key,
         "OpenAI-Beta: realtime=v1"
     ]
-
     def on_open(ws):
         print("Connected to server.")
         start_message = {
@@ -28,13 +27,16 @@ def create_session(filename, section, variable):
             }
         }
         ws.send(json.dumps(start_message))
-        
         dummy_chunk = {
         "event": "event456",
         "type": "input_audio_buffer.append",
         "data": str(base64.b64encode(b"\x00" * 3200).decode("utf-8"))  # 3200 bytes of silence
         }
         ws.send(json.dumps(dummy_chunk))
+        ws.send(json.dumps({
+            "event_id": "event_789",
+            "type":"input_audio_buffer.commit",
+        }))
         print("Sent dummy audio chunk")
         stream_audio(ws)
         
@@ -66,10 +68,8 @@ def create_session(filename, section, variable):
         on_error=on_error,
         on_close=on_close,
     )
-
     ws.run_forever()
-    return ws
-
+    
 def stream_audio(ws):
     def callback(indata, frames, time, status):
         # Convert to bytes (PCM16) and base64 encode
@@ -82,8 +82,7 @@ def stream_audio(ws):
             "type":"input_audio_buffer.append",
             "data": b64_audio
         }))
-        
-        
+            
     # Start recording
     with sd.InputStream(samplerate=16000, channels=1, dtype='int16',
                         blocksize=3200, callback=callback):
@@ -92,5 +91,5 @@ def stream_audio(ws):
             time.sleep(0.1)  # Keep the stream alive
             
 if __name__ == "__main__":
-    ws = create_session('credentials.ini', 'open_ai', 'api_key')
+    create_session_app('credentials.ini', 'open_ai', 'api_key')
         
