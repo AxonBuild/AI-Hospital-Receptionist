@@ -38,8 +38,8 @@ def create_session(filename, section, variable):
         print("Sent dummy audio chunk")
         stream_audio(ws)
         
-    async def on_message(ws, message):
-        message = await ws.recv()
+    def on_message(ws, message):
+        message = ws.recv()
         print("Raw message received:", message)
         data = json.loads(message)
         print(data)
