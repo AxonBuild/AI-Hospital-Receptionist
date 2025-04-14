@@ -21,7 +21,7 @@ def create_session(filename, section, variable):
     response = requests.post(url, headers = headers, json = data)
     if(response.status_code == 200):
         return True
-    else 
+    else:
         return False
 
 
