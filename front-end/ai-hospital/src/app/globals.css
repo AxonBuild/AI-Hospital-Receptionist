@@ -40,3 +40,30 @@ a {
     color-scheme: dark;
   }
 }
+
+#centered-text{
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  margin-top: 5%;
+  font-size: 2rem;
+  margin-bottom: 0%;
+}
+
+#speak-button
+{
+  display: flex;
+  justify-content: center;
+}
+#speak
+{
+  width: 5%;
+  height: 5%;
+  margin-top: 0%;
+  margin-bottom: 75%;
+}
+#mic-svg
+{
+  width: 100%;
+  height: 100%;
+}
