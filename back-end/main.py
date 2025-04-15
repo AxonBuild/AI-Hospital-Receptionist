@@ -1,32 +1,52 @@
 import sounddevice as sd
 import numpy as np
 import json
-import configparser
 import websocket
 import time
 import base64
+import requests
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 #made for extracting data from .ini files
 def create_session_app(filename, section, variable):
-    config = configparser.ConfigParser()
-    config.read(filename)
-    api_key = config[section][variable]
+    api_key = os.getenv("OPENAI_API_KEY")
+    url = "https://api.openai.com/v1/realtime/sessions"
+    headers = {
+    "Authorization": f"Bearer {api_key}",
+    "Content-Type": "application/json"
+    }
+
+    data = {
+        "model": "gpt-4o-realtime-preview",
+        "modalities": ["audio", "text"],
+        "instructions": "You are a friendly assistant."
+    }
+    response = requests.post(url, headers=headers, json=data)
+    response = json.loads(response)
+    session_id = response["id"]
+    client_secret = response["client_secret"]["value"]
     
+    return response
+
     url = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17"
     headers = [
         "Authorization: Bearer " + api_key,
         "OpenAI-Beta: realtime=v1"
     ]
+    
     def on_open(ws):
         print("Connected to server.")
-        start_message = {
-        "type": "start",
-        "audio": {
-            "format": "pcm16",
-            "sample_rate": 24000
-            }
-        }
-        ws.send(json.dumps(start_message))
+        # start_message = {
+        # "type": "start",
+        # "audio": {
+        #     "format": "pcm16",
+        #     "sample_rate": 24000
+        #     }
+        # }
+        # ws.send(json.dumps(start_message))
         dummy_chunk = {
         "event": "event456",
         "type": "input_audio_buffer.append",
@@ -91,5 +111,6 @@ def stream_audio(ws):
             time.sleep(0.1)  # Keep the stream alive
             
 if __name__ == "__main__":
-    create_session_app('credentials.ini', 'open_ai', 'api_key')
-        
+    response = create_session_app('credentials.ini', 'open_ai', 'api_key')
+    print(response.text)
+    
