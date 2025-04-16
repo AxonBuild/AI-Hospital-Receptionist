@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-url = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17"
+url = "wss://api.openai.com/v1/realtime?intent=transcription"
 headers = [
     "Authorization: Bearer " + OPENAI_API_KEY,
     "OpenAI-Beta: realtime=v1"
@@ -34,25 +34,26 @@ def process_audio_chunk(indata, frames, time, status):
         print("Status:", status)
 
     # `indata` is a NumPy array of shape (frames, channels)
-    audio_chunk = indata.copy()  # Don't use indata directly — it's reused
+    audio_chunk = np.frombuffer(indata, dtype=np.int16).astype(np.float32) / 32768.0
     my_stream_function(audio_chunk)
 
 def my_stream_function(chunk, silence_threshold = 0.01):
     # Handle the audio chunk (e.g., send over WebSocket, analyze, etc.)
     
-    volume_norm = np.linalg.norm(chunk) / len(chunk)
+    # volume_norm = np.linalg.norm(chunk) / len(chunk)
 
-    if volume_norm < silence_threshold:
-        # It's probably silence — skip
-        return
-    else:
-        # Otherwise, process the chunk    base64_chunk = base64_encode_audio(chunk)
-        print("Received chunk with shape:", chunk.shape)
-        event = {
-            "type": "input_audio_buffer.append",
-            "audio": base64_chunk
-        }
-        ws.send(json.dumps(event))
+    # if volume_norm < silence_threshold:
+    #     # It's probably silence — skip
+    #     return
+    # else:
+    # Otherwise, process the chunk    
+    base64_chunk = base64_encode_audio(chunk)
+    print("Received chunk with shape:", chunk.shape)
+    event = {
+        "type": "input_audio_buffer.append",
+        "audio": base64_chunk 
+    }
+    ws.send(json.dumps(event))
     
 
 def on_open(ws):
@@ -76,7 +77,12 @@ def on_message(ws, message):
             event = {
                 "type": "session.update",
                 "session": {
-                    "instructions": "Your job is to provide a transcript of the provided audio and nothing else. You are just a tool for transcription."
+                    "instructions": "Your job is to provide a transcript of the provided audio and nothing else. You are just a tool for transcription.",
+                    "turn_detection": {
+                        "type": "server_vad",
+                        # "eagerness": "high",
+                        "threshold": 0.5
+                    }
                 }
             }
             ws.send(json.dumps(event))
@@ -85,7 +91,8 @@ def on_message(ws, message):
             samplerate = 16000  # Lower is easier to handle live
             channels = 1
             # Open a stream
-            with sd.InputStream(callback=process_audio_chunk,
+            with sd.RawInputStream(callback=process_audio_chunk,
+                                device=1,
                                 channels=channels,
                                 samplerate=samplerate,
                                 blocksize=1024):  # You can tweak this size
