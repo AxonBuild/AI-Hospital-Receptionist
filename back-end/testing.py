@@ -9,16 +9,15 @@ import requests
 import os
 import struct
 from dotenv import load_dotenv
-import threading
 
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-url = "wss://api.openai.com/v1/realtime?intent=transcription"
+url = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17"
 headers = [
     "Authorization: Bearer " + OPENAI_API_KEY,
     "OpenAI-Beta: realtime=v1"
-] 
+]
 
 def float_to_16bit_pcm(float32_array):
     clipped = [max(-1.0, min(1.0, x)) for x in float32_array]
@@ -34,11 +33,13 @@ def process_audio_chunk(indata, frames, time, status):
     if status:
         print("Status:", status)
 
-    audio_chunk = indata[:, 0]  # if mono, or pick a single channel
+    # `indata` is a NumPy array of shape (frames, channels)
+    audio_chunk = np.frombuffer(indata, dtype=np.int16).astype(np.float32) / 32768.0
     my_stream_function(audio_chunk)
 
 def my_stream_function(chunk, silence_threshold = 0.01):
-    #Handle the audio chunk (e.g., send over WebSocket, analyze, etc.) 
+    # Handle the audio chunk (e.g., send over WebSocket, analyze, etc.)
+    
     # volume_norm = np.linalg.norm(chunk) / len(chunk)
 
     # if volume_norm < silence_threshold:
@@ -53,26 +54,12 @@ def my_stream_function(chunk, silence_threshold = 0.01):
         "audio": base64_chunk 
     }
     ws.send(json.dumps(event))
-
+    
 
 def on_open(ws):
     print("Connected to server.")
     
-def transcripting():
-    samplerate = 24000  # Lower is easier to handle live
-    channels = 1
-    # Open a stream
-    with sd.InputStream(callback=process_audio_chunk,
-                        device=1,
-                        channels=channels,
-                        samplerate=samplerate,
-                        blocksize=1024):  # You can tweak this size
-        print("Streaming... Press Ctrl+C to stop.")
-        while True:
-            sd.sleep(1000)  # Just keep the stream alive\
 
-transcripting_thread = threading.Thread(target=transcripting)
-                            
 def on_message(ws, message):
     print("Raw message received")
     data = json.loads(message)
@@ -86,10 +73,31 @@ def on_message(ws, message):
         #handle audio playback later
     else:
         print("Received event:", json.dumps(data, indent=2) + '\n')
-        if(data['type'] == 'transcription_session.created'):
-            print("Else clause running")
-            transcripting_thread.start()
-            
+        if(data['type'] == 'session.created'):
+            event = {
+                "type": "session.update",
+                "session": {
+                    "instructions": "Your job is to provide a transcript of the provided audio and nothing else. You are just a tool for transcription."
+                    "ser"
+                }
+            }
+            ws.send(json.dumps(event))
+        elif(data['type'] == 'session.updated'):
+            # Parameters
+            samplerate = 16000  # Lower is easier to handle live
+            channels = 1
+            # Open a stream
+            with sd.RawInputStream(callback=process_audio_chunk,
+                                device=1,
+                                channels=channels,
+                                samplerate=samplerate,
+                                blocksize=1024):  # You can tweak this size
+                print("Streaming... Press Ctrl+C to stop.")
+                while True:
+                    sd.sleep(1000)  # Just keep the stream alive
+        print("Received event:", json.dumps(data, indent=2))
+
+
 ws = websocket.WebSocketApp(
         url,
         header=headers,
@@ -98,5 +106,117 @@ ws = websocket.WebSocketApp(
     )
 
 ws.run_forever()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

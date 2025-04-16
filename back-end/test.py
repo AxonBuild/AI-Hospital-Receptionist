@@ -38,6 +38,19 @@ def my_stream_function(chunk, silence_threshold = 0.01):
     #     "audio": base64_chunk 
     # }
     # ws.send(json.dumps(event))
+
+def base64_decode_audio(encoded_str):
+    # Decode base64 to raw PCM bytes
+    pcm_bytes = base64.b64decode(encoded_str)
+    # Convert to NumPy float32 array (normalize back from int16)
+    int16_array = np.frombuffer(pcm_bytes, dtype=np.int16)
+    float32_array = int16_array.astype(np.float32) / 32768.0
+    return float32_array
+
+def play_audio(float32_array, samplerate=16000):
+    sd.play(float32_array, samplerate)
+    sd.wait()
+    
 if __name__ == "__main__":
     samplerate = 16000  # Lower is easier to handle live
     channels = 1
@@ -50,3 +63,4 @@ if __name__ == "__main__":
         print("Streaming... Press Ctrl+C to stop.")
         while True:
             sd.sleep(1000)
+            
