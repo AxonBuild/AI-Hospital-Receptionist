@@ -9,6 +9,7 @@ import requests
 import os
 import struct
 from dotenv import load_dotenv
+import threading
 
 load_dotenv()
 
@@ -38,8 +39,7 @@ def process_audio_chunk(indata, frames, time, status):
     my_stream_function(audio_chunk)
 
 def my_stream_function(chunk, silence_threshold = 0.01):
-    # Handle the audio chunk (e.g., send over WebSocket, analyze, etc.)
-    
+    #Handle the audio chunk (e.g., send over WebSocket, analyze, etc.) 
     # volume_norm = np.linalg.norm(chunk) / len(chunk)
 
     # if volume_norm < silence_threshold:
@@ -54,12 +54,26 @@ def my_stream_function(chunk, silence_threshold = 0.01):
         "audio": base64_chunk 
     }
     ws.send(json.dumps(event))
-    
+
 
 def on_open(ws):
     print("Connected to server.")
     
+def transcripting():
+    samplerate = 16000  # Lower is easier to handle live
+    channels = 1
+    # Open a stream
+    with sd.RawInputStream(callback=process_audio_chunk,
+                        device=1,
+                        channels=channels,
+                        samplerate=samplerate,
+                        blocksize=1024):  # You can tweak this size
+        print("Streaming... Press Ctrl+C to stop.")
+        while True:
+            sd.sleep(1000)  # Just keep the stream alive\
 
+transcripting_thread = threading.Thread(target=transcripting)
+                            
 def on_message(ws, message):
     print("Raw message received")
     data = json.loads(message)
@@ -73,35 +87,10 @@ def on_message(ws, message):
         #handle audio playback later
     else:
         print("Received event:", json.dumps(data, indent=2) + '\n')
-        if(data['type'] == 'session.created'):
-            event = {
-                "type": "session.update",
-                "session": {
-                    "instructions": "Your job is to provide a transcript of the provided audio and nothing else. You are just a tool for transcription.",
-                    "turn_detection": {
-                        "type": "server_vad",
-                        # "eagerness": "high",
-                        "threshold": 0.5
-                    }
-                }
-            }
-            ws.send(json.dumps(event))
-        elif(data['type'] == 'session.updated'):
-            # Parameters
-            samplerate = 16000  # Lower is easier to handle live
-            channels = 1
-            # Open a stream
-            with sd.RawInputStream(callback=process_audio_chunk,
-                                device=1,
-                                channels=channels,
-                                samplerate=samplerate,
-                                blocksize=1024):  # You can tweak this size
-                print("Streaming... Press Ctrl+C to stop.")
-                while True:
-                    sd.sleep(1000)  # Just keep the stream alive
-        print("Received event:", json.dumps(data, indent=2))
-
-
+        if(data['type'] == 'transcription_session.created'):
+            print("Else clause running")
+            transcripting_thread.start()
+            
 ws = websocket.WebSocketApp(
         url,
         header=headers,
