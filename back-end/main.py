@@ -37,15 +37,22 @@ def process_audio_chunk(indata, frames, time, status):
     audio_chunk = indata.copy()  # Don't use indata directly — it's reused
     my_stream_function(audio_chunk)
 
-def my_stream_function(chunk):
+def my_stream_function(chunk, silence_threshold = 0.01):
     # Handle the audio chunk (e.g., send over WebSocket, analyze, etc.)
-    base64_chunk = base64_encode_audio(chunk)
-    print("Received chunk with shape:", chunk.shape)
-    event = {
-        "type": "input_audio_buffer.append",
-        "audio": base64_chunk
-    }
-    ws.send(json.dumps(event))
+    
+    volume_norm = np.linalg.norm(chunk) / len(chunk)
+
+    if volume_norm < silence_threshold:
+        # It's probably silence — skip
+        return
+    else:
+        # Otherwise, process the chunk    base64_chunk = base64_encode_audio(chunk)
+        print("Received chunk with shape:", chunk.shape)
+        event = {
+            "type": "input_audio_buffer.append",
+            "audio": base64_chunk
+        }
+        ws.send(json.dumps(event))
     
 
 def on_open(ws):
@@ -64,7 +71,16 @@ def on_message(ws, message):
         print("Got audio response event")
         #handle audio playback later
     else:
+        print("Received event:", json.dumps(data, indent=2) + '\n')
         if(data['type'] == 'session.created'):
+            event = {
+                "type": "session.update",
+                "session": {
+                    "instructions": "Your job is to provide a transcript of the provided audio and nothing else. You are just a tool for transcription."
+                }
+            }
+            ws.send(json.dumps(event))
+        elif(data['type'] == 'session.updated'):
             # Parameters
             samplerate = 16000  # Lower is easier to handle live
             channels = 1
