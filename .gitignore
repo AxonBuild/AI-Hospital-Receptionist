@@ -1,5 +1,8 @@
 credentials.ini
 env/
+chroma_db/
+sound.wav
+sound2.wav
 tempCodeRunnerFile.py
 flow.txt
 .env

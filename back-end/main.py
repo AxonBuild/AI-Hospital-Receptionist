@@ -20,6 +20,12 @@ headers = [
     "OpenAI-Beta: realtime=v1"
 ] 
 
+def amplify_audio(audio_data, gain=3.0):
+    """Amplify audio by multiplying by gain factor and clipping to prevent distortion"""
+    amplified = audio_data * gain
+    # Clipping is handled by the caller functions
+    return amplified
+
 def float_to_16bit_pcm(float32_array):
     clipped = [max(-1.0, min(1.0, x)) for x in float32_array]
     pcm16 = b''.join(struct.pack('<h', int(x * 32767)) for x in clipped)
@@ -35,7 +41,9 @@ def process_audio_chunk(indata, frames, time, status):
         print("Status:", status)
 
     audio_chunk = indata[:, 0]  # if mono, or pick a single channel
-    my_stream_function(audio_chunk)
+    amplified_chunk = amplify_audio(audio_chunk)
+    
+    my_stream_function(amplified_chunk)
 
 def my_stream_function(chunk, silence_threshold = 0.01):
     #Handle the audio chunk (e.g., send over WebSocket, analyze, etc.) 
