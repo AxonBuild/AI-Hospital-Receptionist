@@ -21,7 +21,7 @@ export default function Home() {
     let socket;
 
     const startRecording = () => {
-      socket = new WebSocket('ws://localhost:8000/ws');
+      socket = new WebSocket('http://0.0.0.0:8000/ws');
       socket.onopen = () => {
         // send the initial settings here, like language, doctor speciality etc.
         socket.send(JSON.stringify({
