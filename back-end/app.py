@@ -6,7 +6,8 @@ import json
 import base64
 import logging
 import time
-from transcription import 
+import asyncio
+from transcription import OpenAITranscriber
 
 # Set up logging
 logging.basicConfig(
@@ -27,6 +28,9 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
+# Store active transcribers by connection
+active_transcribers = {}
+
 @app.get("/")
 async def get():
     logger.info("Root endpoint accessed")
@@ -36,6 +40,12 @@ async def get():
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     logger.info("WebSocket connection accepted")
+    
+    # Create a transcriber for this connection
+    transcriber = OpenAITranscriber(websocket)
+    # Store reference using websocket as key
+    connection_id = id(websocket)
+    active_transcribers[connection_id] = transcriber
     
     try:
         while True:
@@ -56,16 +66,31 @@ async def websocket_endpoint(websocket: WebSocket):
                         
                         logger.info(f"Received audio chunk in {format_type} format, size: {len(base64_data)} chars")
                         
-                        # In a real app, you would process the audio here
-                        # For this example, we're just acknowledging receipt
+                        # Start transcription if not already started
+                        if connection_id in active_transcribers and not hasattr(active_transcribers[connection_id], 'started'):
+                            active_transcribers[connection_id].started = True
+                            success = active_transcribers[connection_id].start_transcription()
+                            if success:
+                                logger.info("Transcription started")
+                            else:
+                                logger.error("Failed to start transcription")
+                        
+                        # Acknowledge receipt
                         await websocket.send_text(json.dumps({
                             "status": "received",
                             "message": f"Received audio chunk ({len(base64_data)} chars)",
                             "timestamp": time.time()
                         }))
-                    
+                        
                     elif json_data["type"] == "command" and json_data.get("command") == "stop":
                         logger.info("Received stop command")
+                        
+                        # Stop transcription if active
+                        if connection_id in active_transcribers:
+                            active_transcribers[connection_id].stop_transcription()
+                            del active_transcribers[connection_id]
+                            logger.info(f"Transcription stopped for connection {connection_id}")
+                        
                         await websocket.send_text(json.dumps({
                             "status": "complete",
                             "message": "Recording stopped",
@@ -75,7 +100,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     # Legacy/direct text handling
                     logger.info("Received non-typed message")
                     await websocket.send_text(f"Message received: {data[:50]}...")
-            
+                    
             except json.JSONDecodeError:
                 logger.warning("Received non-JSON data")
                 await websocket.send_text(f"Received non-JSON data of length {len(data)}")
@@ -83,6 +108,10 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         logger.error(f"WebSocket error: {str(e)}")
     finally:
+        # Clean up transcription resources
+        if connection_id in active_transcribers:
+            active_transcribers[connection_id].stop_transcription()
+            del active_transcribers[connection_id]
         logger.info("WebSocket connection closed")
 
 if __name__ == "__main__":
