@@ -11,14 +11,6 @@ import struct
 from dotenv import load_dotenv
 import threading
 
-load_dotenv()
-
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-url = "wss://api.openai.com/v1/realtime?intent=transcription"
-headers = [
-    "Authorization: Bearer " + OPENAI_API_KEY,
-    "OpenAI-Beta: realtime=v1"
-] 
 
 def amplify_audio(audio_data, gain=3.0):
     """Amplify audio by multiplying by gain factor and clipping to prevent distortion"""
@@ -45,7 +37,7 @@ def process_audio_chunk(indata, frames, time, status):
     
     my_stream_function(amplified_chunk)
 
-def my_stream_function(chunk, silence_threshold = 0.01):
+def my_stream_function(ws,chunk, silence_threshold = 0.01):
     #Handle the audio chunk (e.g., send over WebSocket, analyze, etc.) 
     # volume_norm = np.linalg.norm(chunk) / len(chunk)
 
@@ -67,7 +59,7 @@ def on_open(ws):
     print("Connected to server.")
     
 def transcripting():
-    samplerate = 24000  # Lower is easier to handle live
+    samplerate = 16000  # Lower is easier to handle live
     channels = 1
     # Open a stream
     with sd.InputStream(callback=process_audio_chunk,
@@ -96,15 +88,22 @@ def on_message(ws, message):
         print("Received event:", json.dumps(data, indent=2) + '\n')
         if(data['type'] == 'transcription_session.created'):
             print("Else clause running")
-            transcripting_thread.start()
             
-ws = websocket.WebSocketApp(
+def run_transcription():
+    load_dotenv()
+
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+    url = "wss://api.openai.com/v1/realtime?intent=transcription"
+    headers = [
+        "Authorization: Bearer " + OPENAI_API_KEY,
+        "OpenAI-Beta: realtime=v1"
+    ] 
+    ws = websocket.WebSocketApp(
         url,
         header=headers,
         on_open=on_open,
         on_message=on_message,
     )
 
-ws.run_forever()
-
+    ws.run_forever()
 
