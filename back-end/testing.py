@@ -78,7 +78,6 @@ def on_message(ws, message):
                 "type": "session.update",
                 "session": {
                     "instructions": "Your job is to provide a transcript of the provided audio and nothing else. You are just a tool for transcription."
-                    "ser"
                 }
             }
             ws.send(json.dumps(event))

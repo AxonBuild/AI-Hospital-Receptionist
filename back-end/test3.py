@@ -6,6 +6,7 @@ import struct
 import soundfile as sf
 from websocket import create_connection
 from dotenv import load_dotenv
+import threading
 
 load_dotenv()
 
@@ -16,6 +17,7 @@ headers = [
     "Authorization: Bearer " + OPENAI_API_KEY,
     "OpenAI-Beta: realtime=v1"
 ]
+url2 = "ws://localhost:8000/recv_transcript"
 
 def float_to_16bit_pcm(float32_array):
     clipped = [max(-1.0, min(1.0, x)) for x in float32_array]
@@ -69,8 +71,23 @@ def on_message(ws, message):
                     "audio": base64_chunk
                 }
                 ws.send(json.dumps(event))
+        elif(data['type'] == "response.output_item.done"):
+            print("Correct elif entered")
+            message = data['response']['item']['content']['transcript']
+            print("Message found: ", message)
+            ws2.send(message)
+            print("Message sent")
+        elif(data['type'] == "response.done"):
+            print("Error encountered")
+            message = data['response']['status_details']['error']['message']
+            print("Message found: ", message)
+            ws2.send(message)
+            print("Message sent")
         else:
             print("Received event:", json.dumps(data, indent=2) + '\n')
+
+def on_open2():
+    print("Connected to websocket on my end")
 
 
 ws = websocket.WebSocketApp(
@@ -79,8 +96,15 @@ ws = websocket.WebSocketApp(
     on_open=on_open,
     on_message=on_message,
 )
-
-ws.run_forever()
-
+ws2 = websocket.WebSocketApp(
+    url2,
+    on_open=on_open2
+)
+thread_ws = threading.Thread(target=ws.run_forever)
+thread_ws2 = threading.Thread(target=ws2.run_forever)
+thread_ws.start()
+thread_ws2.start()
+thread_ws.join()
+thread_ws2.join()
 
 

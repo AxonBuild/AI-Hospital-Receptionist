@@ -6,16 +6,18 @@ from fill_db import fill_db
 DATA_PATH = "./data/hospital_data.pdf"
 CHROMA_PATH = "./chroma_db"
 
-def rag(question, chroma_path, collection_name):
+def rag(question, chroma_path = CHROMA_PATH, collection_name = "hospital_db"):
     load_dotenv()
 
     chroma_client = chromadb.PersistentClient(path=chroma_path)
 
     collection = chroma_client.get_collection(name=collection_name)
 
-    query = input(question + " : ")
-
-    results = collection.query(query_texts=[query], n_results = 1)
+    results = collection.query(query_texts=[question], n_results = 1)
+    print("Querying collection with:", question)
+    print("Total documents in collection:", collection.count())
+    results = collection.query(query_texts=[question], n_results=1)
+    print("Query results:", results)
 
     client = OpenAI()
 
@@ -27,7 +29,13 @@ def rag(question, chroma_path, collection_name):
     response = client.chat.completions.create(
         model = "gpt-4o",
         messages = [{"role": "system", "content": system_prompt},
-                    {"role": "user", "content": query}]
+                    {"role": "user", "content": question}]
     )
 
-    print(response.choices[0].message.content)
+    return response.choices[0].message.content
+    
+if __name__ == "__main__":
+    client = chromadb.PersistentClient(path="./chroma_db")
+    print(client.list_collections())
+
+    rag("Where is Greenview Hospital located?")

@@ -8,6 +8,7 @@ import logging
 import time
 import asyncio
 from transcription import OpenAITranscriber
+from rag import rag
 
 # Set up logging
 logging.basicConfig(
@@ -113,6 +114,21 @@ async def websocket_endpoint(websocket: WebSocket):
             active_transcribers[connection_id].stop_transcription()
             del active_transcribers[connection_id]
         logger.info("WebSocket connection closed")
+
+@app.websocket('/recv_transcript')
+async def execute_transcript(websocket:WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_text()
+            print("Response received: ", data)
+            logger.info(f"Response received: {data}")
+            answer = rag(data)
+            
+    except Exception as e:
+        print(e)
+    finally:
+        await websocket.close()
 
 if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)

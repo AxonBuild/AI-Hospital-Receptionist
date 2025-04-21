@@ -2,7 +2,7 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 import chromadb
 
-def fill_db(chroma_path, collection_name, file_path):
+def fill_db(chroma_path = "./chroma_db", collection_name = "hospital_db", file_path = "./data/hospital_data.pdf"):
     #initialisation
     CHROMA_PATH = chroma_path
     chroma_client = chromadb.PersistentClient(path=CHROMA_PATH)
@@ -26,3 +26,6 @@ def fill_db(chroma_path, collection_name, file_path):
         metadata.append(chunk.metadata)
         
     collection.upsert(documents=documents, metadatas=metadata, ids=ids)
+
+if __name__ == "__main__":
+    fill_db()
