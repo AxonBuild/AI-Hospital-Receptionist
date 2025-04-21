@@ -154,3 +154,6 @@ class OpenAITranscriber:
             self.audio_thread.join(timeout=1.0)
             
         return True
+    
+    def get_voice_output(text):
+        pass
