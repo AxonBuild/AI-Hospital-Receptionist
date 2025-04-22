@@ -11,6 +11,7 @@ import struct
 from dotenv import load_dotenv
 import threading
 import asyncio
+import soundfile as sf
 
 def amplify_audio(audio_data, gain=3.0):
     """Amplify audio by multiplying by gain factor and clipping to prevent distortion"""
@@ -34,7 +35,8 @@ class OpenAITranscriber:
         self.openai_ws = None
         self.stream_active = False
         self.audio_thread = None
-        
+        self.sent_audio = False
+
     def set_client_websocket(self, client_websocket):
         self.client_websocket = client_websocket
         
@@ -91,7 +93,7 @@ class OpenAITranscriber:
         self.audio_thread.daemon = True
         self.audio_thread.start()
     
-    def on_openai_message(self, message):
+    async def on_openai_message(self, message):
         print("Raw message received from OpenAI")
         data = json.loads(message)
         
@@ -108,7 +110,69 @@ class OpenAITranscriber:
             print("Got audio response event")
             #handle audio playback later
         else:
-            print("Received event:", json.dumps(data, indent=2) + '\n')
+            print("Else clause running")
+            print(data)
+            
+            if(data['type'] == "session.created"):
+                event = {
+                    "type": "session.update",
+                    "session": {
+                        "instructions": "If you are given base64 encoded audio, you are a tool for transcription only, otherwise you are a helpful assistant for Greenview Medical Centre"
+                    },
+                    "input_audio_transcription":
+                    {
+                        "enabled": True,
+                        "model": "whisper-1"
+                    }
+                }
+                self.openai_ws.send(json.dumps(event))
+                
+            elif(data['type'] == "session.updated" and self.sent_audio == False):    
+                print("Else clause entered")
+                files = [
+                './sound2.wav'
+                ]
+
+                for filename in files:
+                    data, samplerate = sf.read(filename, dtype='float32')  
+                    channel_data = data[:, 0] if data.ndim > 1 else data
+                    base64_chunk = base64_encode_audio(channel_data)
+                    
+                    # Send the client event
+                    event = {
+                        "type": "input_audio_buffer.append",
+                        "audio": base64_chunk
+                    }
+                    self.openai_ws.send(json.dumps(event))
+                    self.sent_audio = True
+
+            elif(data['type'] == "session.updated" and self.sent_audio == True):
+                event_id = data['event_id']
+                text_message = {
+                "event_id": event_id,
+                "type": "conversation.item.create",
+                "item": {
+                "type": "message",
+                "role": "user",
+                "content": [{"type": "input_text", "text": "what is 5+5"}]
+                }
+                }
+                await self.openai_ws.send(json.dumps(text_message))
+            elif(data['type'] == "response.output_item.done"):
+                print("Correct elif entered")
+                message = data['response']['item']['content']['transcript']
+                print("Message found: ", message)
+                self.client_websocket.send(message)
+                print("Message sent")
+            elif(data['type'] == "response.done"):
+                print("Error encountered")
+                message = data['response']['status_details']['error']['message']
+                print("Message found: ", message)
+                self.client_websocket.send(message)
+                print("Message sent")
+            else:
+                print("Received event:", json.dumps(data, indent=2) + '\n')
+
     
     async def send_to_client(self, data):
         if self.client_websocket:
@@ -121,7 +185,7 @@ class OpenAITranscriber:
         load_dotenv()
         
         OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-        url = "wss://api.openai.com/v1/realtime?intent=transcription"
+        url = "wss://api.openai.com/v1/realtime"
         headers = [
             "Authorization: Bearer " + OPENAI_API_KEY,
             "OpenAI-Beta: realtime=v1"
@@ -155,5 +219,9 @@ class OpenAITranscriber:
             
         return True
     
-    def get_voice_output(text):
-        pass
+    def get_voice_output(self, text):
+        event = {
+                    "type": "session.update"
+                } 
+        self.openai_ws.send(json.dumps(event))       
+        
