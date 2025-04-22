@@ -18,7 +18,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("websocket-audio")
 
-answers = ["Potty"]
+answers = []
 
 app = FastAPI()
 
@@ -45,7 +45,7 @@ async def websocket_endpoint(websocket: WebSocket):
     logger.info("WebSocket connection accepted")
     
     # Create a transcriber for this connection
-    transcriber = OpenAITranscriber(websocket)
+    transcriber = OpenAITranscriber()
     # Store reference using websocket as key
     connection_id = id(websocket)
     active_transcribers[connection_id] = transcriber
@@ -127,6 +127,7 @@ async def execute_transcript(websocket:WebSocket):
             logger.info(f"Response received: {data}")
             answer = rag(data)
             answers.append(answer)
+            print(answers)
     except Exception as e:
         print(e)
     finally:
