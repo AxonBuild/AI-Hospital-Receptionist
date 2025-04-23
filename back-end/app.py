@@ -132,7 +132,21 @@ async def execute_transcript(websocket:WebSocket):
         print(e)
     finally:
         await websocket.close()
-
+@app.websocket('/recv_audio')
+async def recv_audio(websocket:WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_text()
+            print("Response received: ", data)
+            logger.info(f"Response received: {data}")
+            answer = rag(data)
+            answers.append(answer)
+            print(answers)
+    except Exception as e:
+        print(e)
+    finally:
+        await websocket.close()
 @app.get("/get_rag_answer")
 async def getRagAnswer():
     return answers[-1]

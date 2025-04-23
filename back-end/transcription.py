@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 import threading
 import asyncio
 import soundfile as sf
+from reconstruct_audio import reconstruct_audio
 
 def amplify_audio(audio_data, gain=3.0):
     """Amplify audio by multiplying by gain factor and clipping to prevent distortion"""
@@ -28,7 +29,7 @@ def base64_encode_audio(float32_array):
     pcm_bytes = float_to_16bit_pcm(float32_array)
     encoded = base64.b64encode(pcm_bytes).decode('ascii')
     return encoded
-
+    
 def log(text):
      with open("logs.txt", "a") as file:
         if not isinstance(text, str):
@@ -45,6 +46,7 @@ class OpenAITranscriber:
         self.stream_active = False
         self.audio_thread = None
         self.sent_audio = False
+        self.current_audio = None
         file = open("logs.txt", "w")
         file.write("")
         file.close()
@@ -186,6 +188,7 @@ class OpenAITranscriber:
                 "event_id": data["event_id"],
                 "type": "response.create"   
                 }
+                self.current_audio = []
                 self.openai_ws.send(json.dumps(message))
             elif(data['type'] == "response.text.delta"):
                 print(data)
@@ -193,6 +196,9 @@ class OpenAITranscriber:
             elif(data['type'] == "response.audio.delta"):
                 print(data)
                 log(data)
+                self.current_audio.append(data['delta'])
+            elif(data['type'] == "response.audio.done"):
+                reconstruct_audio(self.current_audio)
             elif(data['type'] == "response.output_item.done"):
                 print("Correct elif entered")
                 log("Correct elif entered")
@@ -203,8 +209,8 @@ class OpenAITranscriber:
                 print("Message sent")
                 log("Message sent")
             elif(data['type'] == "response.done"):
-                print("Error encountered")
-                log("Error encountered")
+                # print("Error encountered")
+                # log("Error encountered")
                 message = data['response']['status_details']['error']['message']
                 print("Message found: ", message)
                 log("Message found: " + message)
