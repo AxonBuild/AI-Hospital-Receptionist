@@ -165,6 +165,7 @@ class OpenAITranscriber:
                         "type": "input_audio_buffer.append",
                         "audio": base64_chunk
                     }
+                    time.sleep(1)
                     self.openai_ws.send(json.dumps(event))
                     self.sent_audio = True
 
@@ -182,6 +183,7 @@ class OpenAITranscriber:
                 "content": [{"type": "input_text", "text": text}]
                 }
                 }
+                time.sleep(1)
                 self.openai_ws.send(json.dumps(text_message))
             elif(data['type'] == "conversation.item.created"):
                 message = {
@@ -189,6 +191,7 @@ class OpenAITranscriber:
                 "type": "response.create"   
                 }
                 self.current_audio = []
+                time.sleep(1)
                 self.openai_ws.send(json.dumps(message))
             elif(data['type'] == "response.text.delta"):
                 print(data)
@@ -199,29 +202,38 @@ class OpenAITranscriber:
                 self.current_audio.append(data['delta'])
             elif(data['type'] == "response.audio.done"):
                 to_send_audio = reconstruct_audio(self.current_audio)
-                message = {
-                    "audio": to_send_audio,
+                print(to_send_audio)
+                base_64_audio = base64_encode_audio(to_send_audio) #encoding before sending
+                message = json.dumps({
+                    "audio": base_64_audio,
                     "type": "audio_response"
-                }
-                self.client_websocket.send(to_send_audio)
+                })
+                print("Message created, about to send")
+                self.client_websocket.send(message)
+                print("Message sent")
             elif(data['type'] == "response.output_item.done"):
                 print("Correct elif entered")
                 log("Correct elif entered")
                 message = data['response']['item']['content']['transcript']
                 print("Message found: ", message)
-                log("Message found: " + message)
+                log("Message found: " + str(message))
                 self.client_websocket.send(message)
                 print("Message sent")
                 log("Message sent")
             elif(data['type'] == "response.done"):
                 # print("Error encountered")
                 # log("Error encountered")
-                message = data['response']['status_details']['error']['message']
-                print("Message found: ", message)
-                log("Message found: " + message)
-                self.client_websocket.send(message)
-                print("Message sent")
-                log("Message sent")
+                if(data["response"]["status"] == "cancelled"):
+                    log(data)
+                    print("Cancelled")
+                    return
+                else:
+                    message = data['response']['status_details']['error']['message']
+                    print("Message found: ", message)
+                    log("Message found: " + message)
+                    self.client_websocket.send(message)
+                    print("Message sent")
+                    log("Message sent")
             else:
                 print("Received event:", json.dumps(data, indent=2) + '\n')
                 log("Received event:" + json.dumps(data, indent=2) + '\n')

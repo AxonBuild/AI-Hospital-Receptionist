@@ -33,6 +33,8 @@ export default function Home()
     log(`Toggle button clicked. Current isRecording state: ${isRecording}`);
     
     if (!isRecording) {
+      socketRef.current = new WebSocket('ws://localhost:8000/ws');
+      log("Websocket opened");
       onMessage();
     } else {
       stopRecording();
@@ -111,16 +113,51 @@ export default function Home()
 
     const onMessage = () => {
       socketRef.current.onmessage = event => {
-      log(`Received WebSocket message: ${event.data.substring(0, 50)}...`);
-      
-      try {
-        if (dataRef.current) {
-          dataRef.current.innerHTML = event.data;
+        log(`Received WebSocket message: ${event.data.substring(0, 50)}...`);
+        
+        try {
+          // Try to parse as JSON
+          const data = JSON.parse(event.data);
+          
+          // Handle different message types
+          if (data.type === "audio_response") {
+            log("Received audio response, attempting to play...");
+            
+            // Convert base64 to audio buffer and play
+            const audioData = atob(data.audio_data);
+            const arrayBuffer = new Uint8Array(audioData.length);
+            for (let i = 0; i < audioData.length; i++) {
+              arrayBuffer[i] = audioData.charCodeAt(i);
+            }
+            
+            // Create audio context and play
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            audioContext.decodeAudioData(arrayBuffer.buffer)
+              .then(buffer => {
+                const source = audioContext.createBufferSource();
+                source.buffer = buffer;
+                source.connect(audioContext.destination);
+                source.start(0);
+                log("Audio playback started");
+              })
+              .catch(err => {
+                log(`Error decoding audio: ${err}`);
+                console.error("Error decoding audio:", err);
+              });
+          } else {
+            // For text/transcript messages
+            if (dataRef.current) {
+              dataRef.current.innerHTML = event.data;
+            }
+          }
+        } catch (e) {
+          // Not JSON or other error, just display as text
+          if (dataRef.current) {
+            dataRef.current.innerHTML = event.data;
+          }
+          log(`Error handling WebSocket message: ${e.message}`);
+          console.error("Error handling WebSocket message:", e);
         }
-      } catch (e) {
-        log(`Error handling WebSocket message: ${e.message}`);
-        console.error("Error handling WebSocket message:", e);
-      }
     };
     
     socketRef.current.onerror = (error) => {
