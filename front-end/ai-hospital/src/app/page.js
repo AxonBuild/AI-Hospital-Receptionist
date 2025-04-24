@@ -5,7 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import styles from "./page.module.css";
 
-export default function Home() {
+export default function Home() 
+{
   // Add state to track recording status
   const [isRecording, setIsRecording] = useState(false);
   const [logMessages, setLogMessages] = useState([]);
@@ -32,83 +33,84 @@ export default function Home() {
     log(`Toggle button clicked. Current isRecording state: ${isRecording}`);
     
     if (!isRecording) {
-      startRecording();
+      onMessage();
     } else {
       stopRecording();
     }
   };
 
-  const startRecording = () => {
-    log("Starting recording process...");
+  // const startRecording = () => {
+  //   log("Starting recording process...");
     
-    // Start recording
-    socketRef.current = new WebSocket('ws://localhost:8000/ws');
+  //   // Start recording
+  //   socketRef.current = new WebSocket('ws://localhost:8000/ws');
     
-    socketRef.current.onopen = () => {
-      log("WebSocket connection established");
+  //   socketRef.current.onopen = () => {
+  //     log("WebSocket connection established");
       
-      const mediaStreamConstraints = {
-        audio: true,
-      };
+  //     const mediaStreamConstraints = {
+  //       audio: true,
+  //     };
       
-      log("Requesting microphone access...");
-      navigator.mediaDevices.getUserMedia(mediaStreamConstraints)
-        .then(stream => {
-          log("Microphone access granted");
+  //     log("Requesting microphone access...");
+  //     navigator.mediaDevices.getUserMedia(mediaStreamConstraints)
+  //       .then(stream => {
+  //         log("Microphone access granted");
           
-          // Check if the browser supports the WebM format
-          const mimeType = MediaRecorder.isTypeSupported('audio/webm') 
-            ? 'audio/webm' 
-            : 'audio/mp4';
+  //         // Check if the browser supports the WebM format
+  //         const mimeType = MediaRecorder.isTypeSupported('audio/webm') 
+  //           ? 'audio/webm' 
+  //           : 'audio/mp4';
           
-          log(`Using MIME type: ${mimeType}`);
+  //         log(`Using MIME type: ${mimeType}`);
           
-          mediaRecorderRef.current = new MediaRecorder(stream, {
-            mimeType: mimeType,
-            audioBitsPerSecond: 16000
-          });
+  //         mediaRecorderRef.current = new MediaRecorder(stream, {
+  //           mimeType: mimeType,
+  //           audioBitsPerSecond: 16000
+  //         });
           
-          const interval = 1; // Send audio chunks every 1 second
-          mediaRecorderRef.current.start(interval * 1000);
-          log(`Started recording, sending chunks every ${interval} second(s)`);
+  //         const interval = 1; // Send audio chunks every 1 second
+  //         mediaRecorderRef.current.start(interval * 1000);
+  //         log(`Started recording, sending chunks every ${interval} second(s)`);
           
-          mediaRecorderRef.current.ondataavailable = event => {
-            if (event.data.size > 0) {
-              log(`Audio chunk received: ${event.data.size} bytes`);
+  //         mediaRecorderRef.current.ondataavailable = event => {
+  //           if (event.data.size > 0) {
+  //             log(`Audio chunk received: ${event.data.size} bytes`);
               
-              // For this basic demo, convert the blob to base64 for easier transmission
-              const reader = new FileReader();
-              reader.onloadend = () => {
-                if (reader.readyState === FileReader.DONE && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-                  // Send as text since our backend is expecting text
-                  const base64data = btoa(
-                    new Uint8Array(reader.result)
-                      .reduce((data, byte) => data + String.fromCharCode(byte), '')
-                  );
+  //             // For this basic demo, convert the blob to base64 for easier transmission
+  //             const reader = new FileReader();
+  //             reader.onloadend = () => {
+  //               if (reader.readyState === FileReader.DONE && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+  //                 // Send as text since our backend is expecting text
+  //                 const base64data = btoa(
+  //                   new Uint8Array(reader.result)
+  //                     .reduce((data, byte) => data + String.fromCharCode(byte), '')
+  //                 );
                   
-                  log(`Sending audio chunk: ${base64data.length} chars in base64`);
-                  socketRef.current.send(JSON.stringify({
-                    type: "audio_data",
-                    format: mimeType,
-                    data: base64data
-                  }));
-                }
-              };
-              reader.readAsArrayBuffer(event.data);
-            }
-          };
+  //                 log(`Sending audio chunk: ${base64data.length} chars in base64`);
+  //                 socketRef.current.send(JSON.stringify({
+  //                   type: "audio_data",
+  //                   format: mimeType,
+  //                   data: base64data
+  //                 }));
+  //               }
+  //             };
+  //             reader.readAsArrayBuffer(event.data);
+  //           }
+  //         };
           
-          // Make sure state is updated properly
-          setIsRecording(true);
-          log("Recording state set to TRUE");
-        })
-        .catch(error => {
-          log(`Error accessing microphone: ${error.message}`);
-          console.error("Error accessing microphone:", error);
-        });
-    };
+  //         //Make sure state is updated properly
+  //         setIsRecording(true);
+  //         log("Recording state set to TRUE");
+  //       })
+  //       .catch(error => {
+  //         log(`Error accessing microphone: ${error.message}`);
+  //         console.error("Error accessing microphone:", error);
+  //       });
+  //   };
 
-    socketRef.current.onmessage = event => {
+    const onMessage = () => {
+      socketRef.current.onmessage = event => {
       log(`Received WebSocket message: ${event.data.substring(0, 50)}...`);
       
       try {

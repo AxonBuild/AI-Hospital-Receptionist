@@ -198,7 +198,12 @@ class OpenAITranscriber:
                 log(data)
                 self.current_audio.append(data['delta'])
             elif(data['type'] == "response.audio.done"):
-                reconstruct_audio(self.current_audio)
+                to_send_audio = reconstruct_audio(self.current_audio)
+                message = {
+                    "audio": to_send_audio,
+                    "type": "audio_response"
+                }
+                self.client_websocket.send(to_send_audio)
             elif(data['type'] == "response.output_item.done"):
                 print("Correct elif entered")
                 log("Correct elif entered")
