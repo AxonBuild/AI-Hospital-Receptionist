@@ -142,7 +142,8 @@ class OpenAITranscriber:
                     "instructions": "If you are given base64 encoded audio, you are a tool for transcription only, otherwise you are a helpful assistant for Greenview Medical Centre"
                 }
             }
-            self.openai_ws.send(json.dumps(event))
+            if(self.websocket_working("openai")):
+                self.openai_ws.send(json.dumps(event))
             
         elif(data['type'] == "session.updated" and self.sent_audio == False):    
             print("Else clause entered")
@@ -161,8 +162,9 @@ class OpenAITranscriber:
                     "audio": base64_chunk
                 }
                 time.sleep(1)
-                self.openai_ws.send(json.dumps(event))
-                self.sent_audio = True
+                if(self.websocket_working("openai")):
+                    self.openai_ws.send(json.dumps(event))
+                    self.sent_audio = True
 
         elif(data['type'] == "session.updated" and self.sent_audio == True):
             response = requests.get("http://0.0.0.0:8000/get_rag_answer")
@@ -179,7 +181,8 @@ class OpenAITranscriber:
             }
             }
             time.sleep(1)
-            self.openai_ws.send(json.dumps(text_message))
+            if(self.websocket_working("openai")):
+                self.openai_ws.send(json.dumps(text_message))
         elif(data['type'] == "conversation.item.created"):
             message = {
             "event_id": data["event_id"],
@@ -187,7 +190,8 @@ class OpenAITranscriber:
             }
             self.current_audio = []
             time.sleep(1)
-            self.openai_ws.send(json.dumps(message))
+            if(self.websocket_working("openai")):
+                self.openai_ws.send(json.dumps(message))
         elif(data['type'] == "response.text.delta"):
             print(data)
             log(data)
@@ -206,7 +210,7 @@ class OpenAITranscriber:
                     "data": base_64_audio
                 })
                 print("Message created, about to send")
-                if(self.client_websocket is not None and self.client_websocket.sock is not None and self.client_websocket.sock.connected):
+                if(self.websocket_working("client")):#self.client_websocket is not None and self.client_websocket.sock is not None and self.client_websocket.sock.connected):
                     self.client_websocket.send(message)    
                 print("Message sent")
                 self.sent_audio = False
@@ -319,4 +323,3 @@ if __name__ == "__main__":
         print("Stopping transcription...")
         log("Stopping transcription...")
         transcriber.stop_transcription()
-    
