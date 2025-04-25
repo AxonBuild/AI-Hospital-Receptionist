@@ -56,6 +56,7 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             # Receive data from client
             data = await websocket.receive_text()
+            print(data)
             for client in connected_clients:
                 await client.send_text(json.dumps({
                     "type": "audio_response",
@@ -63,6 +64,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     "message": f"Echoing audio data of {data} chars",
                     "timestamp": time.time()
                 }))
+                print("Sent to client")
                 logger.info(f"Received message: {data[:50]}...")
                     
             # try:

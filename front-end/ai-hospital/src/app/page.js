@@ -111,53 +111,66 @@ export default function Home()
   //       });
   //   };
 
-    const onMessage = () => {
-      socketRef.current.onmessage = event => {
-        log(`Received WebSocket message: ${event.data.substring(0, 50)}...`);
-        
-        try {
-          // Try to parse as JSON
-          const data = JSON.parse(event.data);
+  const onMessage = () => {
+    socketRef.current.onmessage = event => {
+      log(`Received WebSocket message: ${event.data.substring(0, 50)}...`);
+      
+      try {
+        // Try to parse as JSON
+        const data = JSON.parse(event.data);
+        log(JSON.stringify(data))
+        // Handle different message types
+        if (data.type === "audio_data") {
+          log("Received audio response, attempting to play...");
           
-          // Handle different message types
-          if (data.type === "audio_response") {
-            log("Received audio response, attempting to play...");
-            
-            // Convert base64 to audio buffer and play
-            const audioData = atob(data.audio_data);
-            const arrayBuffer = new Uint8Array(audioData.length);
-            for (let i = 0; i < audioData.length; i++) {
-              arrayBuffer[i] = audioData.charCodeAt(i);
-            }
-            
-            // Create audio context and play
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            audioContext.decodeAudioData(arrayBuffer.buffer)
-              .then(buffer => {
-                const source = audioContext.createBufferSource();
-                source.buffer = buffer;
-                source.connect(audioContext.destination);
-                source.start(0);
-                log("Audio playback started");
-              })
-              .catch(err => {
-                log(`Error decoding audio: ${err}`);
-                console.error("Error decoding audio:", err);
-              });
-          } else {
-            // For text/transcript messages
-            if (dataRef.current) {
-              dataRef.current.innerHTML = event.data;
-            }
+          // Convert base64 to array buffer
+          const base64Data = data.data;
+          const binaryString = atob(base64Data);
+          const bytes = new Uint8Array(binaryString.length);
+          
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
           }
-        } catch (e) {
-          // Not JSON or other error, just display as text
+          
+          // Create audio context
+          const audioContext = new (window.AudioContext || window.webkitAudioContext)({
+            sampleRate: 16000 // Match your audio sample rate
+          });
+          
+          // Create audio buffer from PCM data
+          const audioBuffer = audioContext.createBuffer(1, bytes.length / 2, audioContext.sampleRate);
+          const channelData = audioBuffer.getChannelData(0);
+          
+          // Convert 16-bit PCM to float32
+          for (let i = 0; i < channelData.length; i++) {
+            // Get 16-bit sample (2 bytes per sample)
+            const sample = (bytes[i * 2] | (bytes[i * 2 + 1] << 8));
+            // Convert to signed value
+            const signedSample = sample >= 0x8000 ? sample - 0x10000 : sample;
+            // Convert to float in range [-1, 1]
+            channelData[i] = signedSample / 32768.0;
+          }
+          
+          // Play audio
+          const source = audioContext.createBufferSource();
+          source.buffer = audioBuffer;
+          source.connect(audioContext.destination);
+          source.start(0);
+          log("Audio playback started");
+        } else {
+          // For text/transcript messages
           if (dataRef.current) {
             dataRef.current.innerHTML = event.data;
           }
-          log(`Error handling WebSocket message: ${e.message}`);
-          console.error("Error handling WebSocket message:", e);
         }
+      } catch (e) {
+        // Not JSON or other error, just display as text
+        if (dataRef.current) {
+          dataRef.current.innerHTML = event.data;
+        }
+        log(`Error handling WebSocket message: ${e.message}`);
+        console.error("Error handling WebSocket message:", e);
+      }
     };
     
     socketRef.current.onerror = (error) => {
@@ -168,7 +181,7 @@ export default function Home()
     socketRef.current.onclose = (event) => {
       log(`WebSocket connection closed: ${event.code} ${event.reason}`);
     };
-  };
+  };    
 
   const stopRecording = () => {
     // Stop recording
@@ -230,7 +243,7 @@ export default function Home()
         }
       }
     };
-  }, []); // Empty dependency array means this only runs on mount/unmount
+  }, []); 
 
   return (
     <div>

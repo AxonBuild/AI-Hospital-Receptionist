@@ -82,13 +82,16 @@ class OpenAITranscriber:
             "type": "input_audio_buffer.append",
             "audio": base64_chunk 
         }
-        self.openai_ws.send(json.dumps(event))
-    
+        if(self.openai_ws is not None and self.openai_ws.sock is not None and self.openai_ws.sock.connected):
+            self.openai_ws.send(json.dumps(event))
+        else:
+            print("OpenAI socket closed")
+            log("OpenAI socket closed")
     def on_openai_open(self):
         print("Connected to OpenAI server.")
         log("Connected to OpenAI server.")
-        self.stream_active = True
-        self.start_audio_stream()
+        #self.stream_active = True
+        #self.start_audio_stream()
     
     def start_audio_stream(self):
         def audio_stream_thread():
@@ -201,19 +204,25 @@ class OpenAITranscriber:
                 log(data)
                 self.current_audio.append(data['delta'])
             elif(data['type'] == "response.audio.done"):
-                to_send_audio = reconstruct_audio(self.current_audio)
-                print(to_send_audio)
-                base_64_audio = base64_encode_audio(to_send_audio) #encoding before sending
-                message = json.dumps({
-                    "audio": base_64_audio,
-                    "type": "audio_response"
-                })
-                print("Message created, about to send")
-                self.client_websocket.send(message)
-                print("Message sent")
+                if(len(self.current_audio) >= 0):
+                    to_send_audio = reconstruct_audio(self.current_audio)
+                    print(to_send_audio)
+                    base_64_audio = base64_encode_audio(to_send_audio) #encoding before sending
+                    message = json.dumps({
+                        "type": "audio_data",
+                        "format": "audio/webm",
+                        "data": base_64_audio
+                    })
+                    print("Message created, about to send")
+                    if(self.client_websocket is not None and self.client_websocket.sock is not None and self.client_websocket.sock.connected):
+                        self.client_websocket.send(message)    
+                    print("Message sent")
+                else:
+                    return
             elif(data['type'] == "response.output_item.done"):
                 print("Correct elif entered")
                 log("Correct elif entered")
+                return
                 message = data['response']['item']['content']['transcript']
                 print("Message found: ", message)
                 log("Message found: " + str(message))
@@ -228,10 +237,12 @@ class OpenAITranscriber:
                     print("Cancelled")
                     return
                 else:
+                    return
                     message = data['response']['status_details']['error']['message']
                     print("Message found: ", message)
                     log("Message found: " + message)
-                    self.client_websocket.send(message)
+                    if(self.client_websocket is not None and self.client_websocket.sock is not None and self.client_websocket.sock.connected):
+                        self.client_websocket.send(message)
                     print("Message sent")
                     log("Message sent")
             else:
