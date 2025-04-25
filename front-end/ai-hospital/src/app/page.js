@@ -120,11 +120,13 @@ export default function Home()
         const data = JSON.parse(event.data);
         log(JSON.stringify(data))
         // Handle different message types
-        if (data.type === "audio_data") {
+        if (data.type === "audio_response") {
           log("Received audio response, attempting to play...");
           
+          const audioDataObj = JSON.parse(data.audio_data)
+      
           // Convert base64 to array buffer
-          const base64Data = data.data;
+          const base64Data = audioDataObj.data;
           const binaryString = atob(base64Data);
           const bytes = new Uint8Array(binaryString.length);
           
@@ -175,7 +177,7 @@ export default function Home()
     
     socketRef.current.onerror = (error) => {
       log(`WebSocket error occurred`);
-      console.error("WebSocket error:", error);
+      console.log("WebSocket error:", error.message || "Unknown error"); ;
     };
     
     socketRef.current.onclose = (event) => {
