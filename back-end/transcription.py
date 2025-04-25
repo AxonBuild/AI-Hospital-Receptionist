@@ -114,6 +114,14 @@ class OpenAITranscriber:
         self.audio_thread.daemon = True
         self.audio_thread.start()
     
+    def websocket_working(self, socket_name):
+        if(socket_name == "client"):
+            return self.client_websocket is not None and self.client_websocket.sock is not None and self.client_websocket.sock.connected
+        elif(socket_name == "openai"):
+            return self.openai_ws is not None and self.openai_ws.sock is not None and self.openai_ws.sock.connected
+        elif(socket_name == "transcript"):
+            return self.transcript_websocket is not None and self.transcript_websocket.sock is not None and self.transcript_websocket.sock.connected
+    
     def on_openai_message(self, message):
         print("Raw message received from OpenAI")
         log("Raw message received from OpenAI")
@@ -124,130 +132,93 @@ class OpenAITranscriber:
         #         self.client_websocket.send(json.dumps(data))
         #     except Exception as e:
         #         print(f"Error sending to client: {e}")
+        print(data)
+        log(data)
+        
+        if(data['type'] == "session.created"):
+            event = {
+                "type": "session.update",
+                "session": {
+                    "instructions": "If you are given base64 encoded audio, you are a tool for transcription only, otherwise you are a helpful assistant for Greenview Medical Centre"
+                }
+            }
+            self.openai_ws.send(json.dumps(event))
             
-        # Process for console output
-        if data.get("type") == "transcript":
-            print("Transcript:", data.get("text"), "(FINAL)" if data.get("is_final") else "")
-            log("Transcript:" + str(data.get("text")) + "(FINAL)" if data.get("is_final") else "")
-        elif data.get("type") == "response":
-            print("Assistant:", data.get("text"))
-            log("Assistant:" + str(data.get("text")))
-        elif data.get("type") == "audio_response":
-            print("Got audio response event")
-            log("Got audio response event")
-            #handle audio playback later
-        else:
-            print("Else clause running")
-            log("Else clause running")
+        elif(data['type'] == "session.updated" and self.sent_audio == False):    
+            print("Else clause entered")
+            log("Else clause entered")
+            files = [
+            './sound2.wav'
+            ]
+            for filename in files:
+                data, samplerate = sf.read(filename, dtype='float32')  
+                channel_data = data[:, 0] if data.ndim > 1 else data
+                base64_chunk = base64_encode_audio(channel_data)
+                
+                # Send the client event
+                event = {
+                    "type": "input_audio_buffer.append",
+                    "audio": base64_chunk
+                }
+                time.sleep(1)
+                self.openai_ws.send(json.dumps(event))
+                self.sent_audio = True
+
+        elif(data['type'] == "session.updated" and self.sent_audio == True):
+            response = requests.get("http://0.0.0.0:8000/get_rag_answer")
+            if(response.status_code == 200):
+                text = response.text
+            event_id = data['event_id']
+            text_message = {
+            "event_id": event_id,
+            "type": "conversation.item.create",
+            "item": {
+            "type": "message",
+            "role": "user",
+            "content": [{"type": "input_text", "text": text}]
+            }
+            }
+            time.sleep(1)
+            self.openai_ws.send(json.dumps(text_message))
+        elif(data['type'] == "conversation.item.created"):
+            message = {
+            "event_id": data["event_id"],
+            "type": "response.create"   
+            }
+            self.current_audio = []
+            time.sleep(1)
+            self.openai_ws.send(json.dumps(message))
+        elif(data['type'] == "response.text.delta"):
             print(data)
             log(data)
-            
-            if(data['type'] == "session.created"):
-                event = {
-                    "type": "session.update",
-                    "session": {
-                        "instructions": "If you are given base64 encoded audio, you are a tool for transcription only, otherwise you are a helpful assistant for Greenview Medical Centre"
-                    }
-                }
-                self.openai_ws.send(json.dumps(event))
-                
-            elif(data['type'] == "session.updated" and self.sent_audio == False):    
-                print("Else clause entered")
-                log("Else clause entered")
-                files = [
-                './sound2.wav'
-                ]
-
-                for filename in files:
-                    data, samplerate = sf.read(filename, dtype='float32')  
-                    channel_data = data[:, 0] if data.ndim > 1 else data
-                    base64_chunk = base64_encode_audio(channel_data)
-                    
-                    # Send the client event
-                    event = {
-                        "type": "input_audio_buffer.append",
-                        "audio": base64_chunk
-                    }
-                    time.sleep(1)
-                    self.openai_ws.send(json.dumps(event))
-                    self.sent_audio = True
-
-            elif(data['type'] == "session.updated" and self.sent_audio == True):
-                response = requests.get("http://0.0.0.0:8000/get_rag_answer")
-                if(response.status_code == 200):
-                    text = response.text
-                event_id = data['event_id']
-                text_message = {
-                "event_id": event_id,
-                "type": "conversation.item.create",
-                "item": {
-                "type": "message",
-                "role": "user",
-                "content": [{"type": "input_text", "text": text}]
-                }
-                }
-                time.sleep(1)
-                self.openai_ws.send(json.dumps(text_message))
-            elif(data['type'] == "conversation.item.created"):
-                message = {
-                "event_id": data["event_id"],
-                "type": "response.create"   
-                }
-                self.current_audio = []
-                time.sleep(1)
-                self.openai_ws.send(json.dumps(message))
-            elif(data['type'] == "response.text.delta"):
-                print(data)
-                log(data)
-            elif(data['type'] == "response.audio.delta"):
-                print(data)
-                log(data)
-                self.current_audio.append(data['delta'])
-            elif(data['type'] == "response.audio.done"):
-                if(len(self.current_audio) >= 0):
-                    to_send_audio = reconstruct_audio(self.current_audio)
-                    print(to_send_audio)
-                    base_64_audio = base64_encode_audio(to_send_audio) #encoding before sending
-                    message = json.dumps({
-                        "type": "audio_data",
-                        "format": "audio/webm",
-                        "data": base_64_audio
-                    })
-                    print("Message created, about to send")
-                    if(self.client_websocket is not None and self.client_websocket.sock is not None and self.client_websocket.sock.connected):
-                        self.client_websocket.send(message)    
-                    print("Message sent")
-                else:
-                    return
-            elif(data['type'] == "response.output_item.done"):
-                print("Correct elif entered")
-                log("Correct elif entered")
-                return
-                message = data['response']['item']['content']['transcript']
-                print("Message found: ", message)
-                log("Message found: " + str(message))
-                self.client_websocket.send(message)
+        elif(data['type'] == "response.audio.delta"):
+            print(data)
+            log(data)
+            self.current_audio.append(data['delta'])
+        elif(data['type'] == "response.audio.done"):
+            if(len(self.current_audio) >= 0):
+                to_send_audio = reconstruct_audio(self.current_audio)
+                print(to_send_audio)
+                base_64_audio = base64_encode_audio(to_send_audio) #encoding before sending
+                message = json.dumps({
+                    "type": "audio_data",
+                    "format": "audio/webm",
+                    "data": base_64_audio
+                })
+                print("Message created, about to send")
+                if(self.client_websocket is not None and self.client_websocket.sock is not None and self.client_websocket.sock.connected):
+                    self.client_websocket.send(message)    
                 print("Message sent")
-                log("Message sent")
-            elif(data['type'] == "response.done"):
-                # print("Error encountered")
-                # log("Error encountered")
-                if(data["response"]["status"] == "cancelled"):
-                    log(data)
-                    print("Cancelled")
-                    return
-                else:
-                    return
-                    message = data['response']['status_details']['error']['message']
-                    print("Message found: ", message)
-                    log("Message found: " + message)
-                    if(self.client_websocket is not None and self.client_websocket.sock is not None and self.client_websocket.sock.connected):
-                        self.client_websocket.send(message)
-                    print("Message sent")
-                    log("Message sent")
+                self.sent_audio = False
             else:
-                print("Received event:", json.dumps(data, indent=2) + '\n')
-                log("Received event:" + json.dumps(data, indent=2) + '\n')
+                return
+        elif(data['type'] == "response.output_item.done"):
+            return
+        elif(data['type'] == "response.done"):
+            return
+        else:
+            print("Received event:", json.dumps(data, indent=2) + '\n')
+            log("Received event:" + json.dumps(data, indent=2) + '\n')
 
     def on_error(self, error):
         print("Error:", error)
