@@ -115,14 +115,7 @@ a {
   position: absolute;
   left: 40%;
   top: 35%;
-}
-.absoluteUppies
-{
-  animation: absoluteUppies 2s;
-}
-.bounce-absolute
-{
-  animation: absoluteBounce 4s infinite;
+  animation: absoluteUppies 2s, absoluteBounce 4s infinite;
 }
 @keyframes opacity-changer
 {
