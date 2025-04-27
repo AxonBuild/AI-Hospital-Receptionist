@@ -14,12 +14,20 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-  background-color: #F6F1D1;
-  color: #3B7A78;
+  /* background-color: #F6F1D1;
+  color: #3B7A78; */
+  /* #background-color: #EBF5EE; */
+  /* color: #78A1BB; */
+  color: #2F2963;
+  background-image: url("/background3.jpg");
+  overflow-x: hidden;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  color: #E8EDDF;
 }
 
 body {
-  color: var(--foreground);
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -51,22 +59,27 @@ a {
   font-size: 2rem;
   margin-bottom: 25%;
   padding-bottom: 0px;
+  animation: dropDown 2s;
 }
 
-#speak-button
-{
+#speak-button {
   display: flex;
   justify-content: center;
 }
-#speak
-{
-  width: 5%;
-  height: 5%;
-  margin-top: 0%;
-  margin-bottom: 0%;
-  border-radius: 50%;
-  background-color: #70A9A1;
+
+#speak {
+  padding: 10px 20px;
+  background-color: #0097A7;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
+
 #mic-svg
 {
   width: 100%;
@@ -85,4 +98,94 @@ a {
   top: 0;
   width: 100%;
   height: 100%;
+}
+
+.opacity-animation
+{
+  animation: opacity-changer infinite;
+  animation-duration: 2s;
+
+}
+#inside-Button > img
+{
+  position: inline;
+}
+#instruction
+{
+  position: absolute;
+  left: 40%;
+  top: 35%;
+}
+.absoluteUppies
+{
+  animation: absoluteUppies 2s;
+}
+.bounce-absolute
+{
+  animation: absoluteBounce 4s infinite;
+}
+@keyframes opacity-changer
+{
+  0%
+  {
+    opacity: 0%;
+  }
+  50%
+  {
+    opacity: 100%;
+  }
+  100%
+  {
+    opacity:0%;
+  }
+}
+@keyframes dropDown
+{
+  0%
+  {
+    margin-bottom: 100%;
+    opacity: 0%;
+  }
+  50%
+  {
+    opacity: 0%;
+  }
+  100%
+  {
+    margin-bottom: 25%;
+    margin-top: 5%;
+    opacity: 100%;
+  }
+}
+@keyframes absoluteBounce
+{
+  0%
+  {
+    top: 35%;
+  }
+  50%
+  {
+    top: 33.5%;
+  }
+  100%
+  {
+    top: 35%;
+  }
+}
+@keyframes absoluteUppies
+{
+  0%
+  {
+    top: 75%;
+    opacity: 0%;
+  }
+  50%
+  {
+    opacity: 0%;
+  }
+  100%
+  {
+    top: 35%;
+    opacity: 100%;
+  }
 }

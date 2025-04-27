@@ -31,10 +31,13 @@ export default function Home()
   // Define toggleRecording function as a React handler
   const toggleRecording = () => {
     log(`Toggle button clicked. Current isRecording state: ${isRecording}`);
-    
+    let mic = document.getElementById("mic")
+    let micText = document.getElementById("mic-text")
     if (!isRecording) {
       socketRef.current = new WebSocket('ws://localhost:8000/ws');
       log("Websocket opened");
+      mic.classList.add("opacity-animation")
+      micText.classList.add("opacity-animation")
       onMessage();
     } else {
       stopRecording();
@@ -114,7 +117,10 @@ export default function Home()
   const onMessage = () => {
     socketRef.current.onmessage = event => {
       log(`Received WebSocket message: ${event.data.substring(0, 50)}...`);
-      
+      let mic = document.getElementById("mic")
+      let micText = document.getElementById("mic-text")
+      mic.classList.remove("opacity-animation")
+      micText.classList.remove("opacity-animation")
       try {
         // Try to parse as JSON
         const data = JSON.parse(event.data);
@@ -228,6 +234,8 @@ export default function Home()
 
   // Cleanup on component unmount
   useEffect(() => {
+    let h2text = document.querySelector("#instruction")
+    h2text.classList.add("bounce-absolute")
     return () => {
       log("Cleaning up resources on true component unmount");
       
@@ -252,30 +260,37 @@ export default function Home()
       <div id="centered-text">
         <h1>Hospital Virtual Receptionist</h1>
       </div>
+      <h2 id = "instruction" className = "absoluteUppies">Hello visitor! How can I help you?</h2>
       <div id="speak-button">
         {/* Use onClick React handler instead of ref + addEventListener */}
-        <button 
-          id="speak" 
+        <button
+          id="speak"
           onClick={toggleRecording}
-          style={{ 
-            padding: '10px 20px',
-            background: isRecording ? '#ff4d4d' : '#4caf50',
+          style={{
+            padding: '8px 16px',
+            background: '#0097A7',
             color: 'white',
             border: 'none',
             borderRadius: '5px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            justifyContent: 'center',
+            gap: '6px',
+            flexDirection: 'row',
+            whiteSpace: 'nowrap',
+            minWidth: 'fit-content'
           }}
         >
-          <img 
-            src="/mic.svg" 
-            width={24} 
-            height={24} 
-            alt={isRecording ? "Stop Recording" : "Start Recording"} 
-          />
-          {isRecording ? 'Stop Recording' : 'Start Recording'}
+            <img
+              src="/mic.svg"
+              width={18}
+              height={18}
+              alt={isRecording ? "Stop Recording" : "Start Recording"}
+              style={{ flexShrink: 0 }}
+              id = "mic"
+            />
+            <span id = "mic-text">{isRecording ? 'Stop Recording' : 'Start Recording'}</span>
         </button>
       </div>
       <div id="data" ref={dataRef}></div>
