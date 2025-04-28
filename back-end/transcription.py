@@ -166,23 +166,24 @@ class OpenAITranscriber:
                     self.openai_ws.send(json.dumps(event))
                     self.sent_audio = True
 
-        elif(data['type'] == "session.updated" and self.sent_audio == True):
-            response = requests.get("http://0.0.0.0:8000/get_rag_answer")
-            if(response.status_code == 200):
-                text = response.text
-            event_id = data['event_id']
-            text_message = {
-            "event_id": event_id,
-            "type": "conversation.item.create",
-            "item": {
-            "type": "message",
-            "role": "user",
-            "content": [{"type": "input_text", "text": text}]
-            }
-            }
-            time.sleep(1)
-            if(self.websocket_working("openai")):
-                self.openai_ws.send(json.dumps(text_message))
+        # elif(data['type'] == "session.updated" and self.sent_audio == True):
+        #     response = requests.get("http://0.0.0.0:8000/get_rag_answer")
+        #     if(response.status_code == 200):
+        #         text = response.text
+        #     event_id = data['event_id']
+        #     text_message = {
+        #     "event_id": event_id,
+        #     "type": "conversation.item.create",
+        #     "item": {
+        #     "type": "message",
+        #     "role": "user",
+        #     "content": [{"type": "input_text", "text": text}]
+        #     }
+        #     }
+        #     time.sleep(1)
+        #     if(self.websocket_working("openai")):
+        #         self.openai_ws.send(json.dumps(text_message))
+        
         elif(data['type'] == "conversation.item.created"):
             message = {
             "event_id": data["event_id"],
@@ -192,14 +193,17 @@ class OpenAITranscriber:
             time.sleep(1)
             if(self.websocket_working("openai")):
                 self.openai_ws.send(json.dumps(message))
+                
         elif(data['type'] == "response.text.delta"):
             print(data)
             log(data)
-        elif(data['type'] == "response.audio.delta"):
+            
+        elif(data['type'] == "response.audio.delta" and self.sent_audio == True):
             print(data)
             log(data)
             self.current_audio.append(data['delta'])
-        elif(data['type'] == "response.audio.done"):
+            
+        elif(data['type'] == "response.audio.done" and self.sent_audio == True):
             if(len(self.current_audio) >= 0):
                 to_send_audio = reconstruct_audio(self.current_audio)
                 print(to_send_audio)
@@ -213,11 +217,31 @@ class OpenAITranscriber:
                 if(self.websocket_working("client")):#self.client_websocket is not None and self.client_websocket.sock is not None and self.client_websocket.sock.connected):
                     self.client_websocket.send(message)    
                 print("Message sent")
-                self.sent_audio = False
+                #self.sent_audio = False
             else:
                 return
-        elif(data['type'] == "response.output_item.done"):
-            return
+        elif(data['type'] == "response.audio_transcript.done" and self.sent_audio == False):
+            if(data['transcript']):
+                message = data['transcript']
+                self.transcript_websocket.send(message)
+                log("Sending transcript for rag response")
+                response = requests.get("http://localhost:8000/get_rag_answer")
+                if(response.status_code == 200):
+                    text = response.text
+                    event_id = data['event_id']
+                    text_message = {
+                    "event_id": event_id,
+                    "type": "conversation.item.create",
+                    "item": {
+                    "type": "message",
+                    "role": "user",
+                    "content": [{"type": "input_text", "text": text}]
+                    }
+                    }
+                    time.sleep(1)
+                    if(self.websocket_working("openai")):
+                        self.openai_ws.send(json.dumps(text_message))
+                        self.sent_audio = True
         elif(data['type'] == "response.done"):
             return
         else:

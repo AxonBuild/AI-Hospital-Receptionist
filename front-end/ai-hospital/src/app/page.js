@@ -117,8 +117,8 @@ export default function Home()
   const onMessage = () => {
     socketRef.current.onmessage = event => {
       log(`Received WebSocket message: ${event.data.substring(0, 50)}...`);
-      let mic = document.getElementById("mic")
-      let micText = document.getElementById("mic-text")
+      const mic = document.getElementById("mic")
+      const micText = document.getElementById("mic-text")
       mic.classList.remove("opacity-animation")
       micText.classList.remove("opacity-animation")
       try {
@@ -164,7 +164,7 @@ export default function Home()
           source.buffer = audioBuffer;
           source.connect(audioContext.destination);
           source.start(0);
-          log("Audio playback started");
+          log("Audio playback started"); 
         } else {
           // For text/transcript messages
           if (dataRef.current) {

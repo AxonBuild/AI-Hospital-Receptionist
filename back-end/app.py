@@ -9,6 +9,7 @@ import time
 import asyncio
 from transcription import OpenAITranscriber
 from rag import rag
+import uuid
 
 # Set up logging
 logging.basicConfig(
@@ -49,9 +50,9 @@ async def websocket_endpoint(websocket: WebSocket):
     # Create a transcriber for this connection
     transcriber = OpenAITranscriber()
     # Store reference using websocket as key
-    connection_id = id(websocket)
+    connection_id = str(uuid.uuid4())
     active_transcribers[connection_id] = transcriber
-    
+    websocket.connection_id = connection_id
     try:
         while True:
             # Receive data from client
