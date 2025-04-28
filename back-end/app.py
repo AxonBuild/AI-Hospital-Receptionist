@@ -19,8 +19,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger("websocket-audio")
 
-answers = []
-
 app = FastAPI()
 
 # Enable CORS to allow requests from Next.js frontend
@@ -130,41 +128,5 @@ async def websocket_endpoint(websocket: WebSocket):
             del active_transcribers[connection_id]
         logger.info("WebSocket connection closed")
         
-@app.websocket('/recv_transcript')
-async def execute_transcript(websocket:WebSocket):
-    await websocket.accept()
-    try:
-        while True:
-            data = await websocket.receive_text()
-            print("Response received: ", data)
-            logger.info(f"Response received: {data}")
-            answer = rag(data)
-            answers.append(answer)
-            print(answers)
-    except Exception as e:
-        print(e)
-    finally:
-        await websocket.close()
-
-@app.websocket('/recv_audio')
-async def recv_audio(websocket:WebSocket):
-    await websocket.accept()
-    try:
-        while True:
-            data = await websocket.receive_text()
-            print("Response received: ", data)
-            logger.info(f"Response received: {data}")
-            answer = rag(data)
-            answers.append(answer)
-            print(answers)
-    except Exception as e:
-        print(e)
-    finally:
-        await websocket.close()
-
-@app.get("/get_rag_answer")
-async def getRagAnswer():
-    return answers[-1]
-
 if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)

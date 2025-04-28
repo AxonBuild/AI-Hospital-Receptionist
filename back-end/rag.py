@@ -38,4 +38,4 @@ if __name__ == "__main__":
     client = chromadb.PersistentClient(path="./chroma_db")
     print(client.list_collections())
 
-    rag("Where is Greenview Hospital located?")
+    print(rag("Where is Greenview Hospital located?"))
