@@ -45,27 +45,24 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     logger.info("WebSocket connection accepted")
     connected_clients.add(websocket)
-    # Create a transcriber for this connection
-    transcriber = OpenAITranscriber()
     # Store reference using websocket as key
     connection_id = str(uuid.uuid4())
-    active_transcribers[connection_id] = transcriber
     websocket.connection_id = connection_id
     try:
         while True:
             # Receive data from client
-            data = await websocket.receive_text()
+            data = await websocket.receive_json()
             print(data)
-            for client in connected_clients:
-                await client.send_text(json.dumps({
-                    "type": "audio_response",
-                    "audio_data": data,
-                    "message": f"Echoing audio data of {data} chars",
-                    "timestamp": time.time()
-                }))
-                print("Sent to client")
-                logger.info(f"Received message: {data[:50]}...")
-                    
+            if(data['event_type'] == 'audio_response_transmitting'):
+                for client in connected_clients:
+                    await client.send_text(json.dumps(data))
+                    print("Sent to client")
+                    logger.info(f"Received message: {data}...")
+            elif(data['event_type'] == 'audio_input_transmitting'):
+                pass
+                # transcriber = OpenAITranscriber()
+                # event_data = data['event_data']
+                # transcriber.send_audio_to_openai(event_data)
             # try:
             #     # Parse the JSON data
             #     json_data = json.loads(data)
@@ -122,10 +119,6 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         logger.error(f"WebSocket error: {str(e)}")
     finally:
-        # Clean up transcription resources
-        if connection_id in active_transcribers:
-            active_transcribers[connection_id].stop_transcription()
-            del active_transcribers[connection_id]
         logger.info("WebSocket connection closed")
         
 if __name__ == "__main__":

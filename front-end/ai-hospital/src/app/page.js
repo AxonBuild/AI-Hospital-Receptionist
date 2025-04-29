@@ -94,9 +94,8 @@ export default function Home()
                   
   //                 log(`Sending audio chunk: ${base64data.length} chars in base64`);
   //                 socketRef.current.send(JSON.stringify({
-  //                   type: "audio_data",
-  //                   format: mimeType,
-  //                   data: base64data
+  //                   event_type: "audio_input_transmitting",
+  //                   event_data: base64data
   //                 }));
   //               }
   //             };
@@ -126,7 +125,7 @@ export default function Home()
         const data = JSON.parse(event.data);
         log(JSON.stringify(data))
         // Handle different message types
-        if (data.type === "audio_response") {
+        if (data.type === "audio_response_transmitting") {
           log("Received audio response, attempting to play...");
           
           const audioDataObj = JSON.parse(data.audio_data)
@@ -220,6 +219,8 @@ export default function Home()
         // Close the socket after sending the stop command
         log("Closing WebSocket connection");
         socketRef.current.close();
+        mic.classList.remove("opacity-animation")
+        micText.classList.remove("opacity-animation")
         log("WebSocket connection closed by client");
       } catch (e) {
         log(`Error during recording stop: ${e.message}`);

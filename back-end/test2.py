@@ -7,12 +7,11 @@ url = "ws://localhost:8000/ws"
 
 def on_open(ws):
     time.sleep(5)
-    dummy_audio = base64.b64encode(b"This is fake audio data").decode("utf-8")
+    dummy_audio = base64.b64encode(b"This is fake audio data").decode()
     print("Formulating message")
     message = json.dumps({
-        "type": "audio_data",
-        "format": "audio/webm",
-        "data": dummy_audio
+        "event_type": "audio_response_transmitting",
+        "event_data": dummy_audio
     })
     print("Message sent")
     ws.send(message)

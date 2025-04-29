@@ -14,6 +14,7 @@ import asyncio
 import soundfile as sf
 from reconstruct_audio import reconstruct_audio
 from rag import rag
+import ssl
 
 def amplify_audio(audio_data, gain=3.0):
     """Amplify audio by multiplying by gain factor and clipping to prevent distortion"""
@@ -49,6 +50,53 @@ class OpenAITranscriber:
         file = open("logs.txt", "w")
         file.write("")
         file.close()
+        load_dotenv()
+        print("env loaded")
+        log("env loaded")
+        OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+        sslopt = {"cert_reqs": ssl.CERT_NONE}
+        url = "wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview"
+        client_url = "ws://localhost:8000/ws"
+        
+        headers = [
+            "Authorization: Bearer " + OPENAI_API_KEY,
+            "OpenAI-Beta: realtime=v1"
+        ]
+        print("First websocket loaded")
+        log("First websocket loaded")
+        self.openai_ws = websocket.WebSocketApp(
+            url,
+            header=headers,
+            on_open=lambda ws: self.on_openai_open(),
+            on_message=lambda ws, msg: self.on_openai_message(msg),
+            on_error=lambda ws, error: self.on_error(error)
+        )
+        print("Second websocket loaded")
+        log("Second websocket loaded")
+        self.client_websocket = websocket.WebSocketApp(
+            url=client_url,
+            on_open=lambda ws: print("Connected to client endpoint"),
+            on_message=lambda ws, msg: print(f"Message from client: {msg}"),
+            on_error=lambda ws, error: self.on_error(error),
+            on_close=lambda ws, close_status_code, close_msg: print("Client connection closed")
+        )
+        # Run the WebSocket in a separate thread
+        #temporary turning off of ssl certificate verification
+        self.thread_ws = threading.Thread(target=self.openai_ws.run_forever(sslopt=sslopt))
+        self.client_thread = threading.Thread(target=self.client_websocket.run_forever)
+        self.thread_ws.daemon = True
+        self.client_thread.daemon = True
+        try:
+            print("Before threads start")
+            log("Before threads start")
+            self.thread_ws.start()
+            self.client_thread.start()
+            print("After threads start")
+            log("After threads start")
+        except Exception as e:
+            print(e)
+            log(e)
+        
 
     def set_client_websocket(self, client_websocket):
         self.client_websocket = client_websocket
@@ -74,15 +122,14 @@ class OpenAITranscriber:
         #     return
         # else:
         # Otherwise, process the chunk
-        base64_chunk = base64_encode_audio(chunk)
         print("Sending chunk with shape:", chunk.shape)
         log("Sending chunk with shape:" + str(chunk.shape))
         event = {
             "type": "input_audio_buffer.append",
-            "audio": base64_chunk 
+            "audio": chunk 
         }
         if(self.openai_ws is not None and self.openai_ws.sock is not None and self.openai_ws.sock.connected):
-            self.openai_ws.send(json.dumps(event))
+            self.openai_ws.send(json.dumps(event))     
         else:
             print("OpenAI socket closed")
             log("OpenAI socket closed")
@@ -248,51 +295,51 @@ class OpenAITranscriber:
         print("Error:", error)
         log("Error:" + error)
     
-    def start_transcription(self):
-        load_dotenv()
-        print("env loaded")
-        log("env loaded")
-        OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-        url = "wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview"
-        client_url = "ws://localhost:8000/ws"
+    # def start_transcription(self):
+    #     load_dotenv()
+    #     print("env loaded")
+    #     log("env loaded")
+    #     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+    #     url = "wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview"
+    #     client_url = "ws://localhost:8000/ws"
         
-        headers = [
-            "Authorization: Bearer " + OPENAI_API_KEY,
-            "OpenAI-Beta: realtime=v1"
-        ]
-        print("First websocket loaded")
-        log("First websocket loaded")
-        self.openai_ws = websocket.WebSocketApp(
-            url,
-            header=headers,
-            on_open=lambda ws: self.on_openai_open(),
-            on_message=lambda ws, msg: self.on_openai_message(msg),
-            on_error=lambda ws, error: self.on_error(error)
-        )
-        print("Second websocket loaded")
-        log("Second websocket loaded")
-        self.client_websocket = websocket.WebSocketApp(
-            url=client_url,
-            on_open=lambda ws: print("Connected to client endpoint"),
-            on_message=lambda ws, msg: print(f"Message from client: {msg}"),
-            on_error=lambda ws, error: self.on_error(error),
-            on_close=lambda ws, close_status_code, close_msg: print("Client connection closed")
-        )
-        # Run the WebSocket in a separate thread
-        self.thread_ws = threading.Thread(target=self.openai_ws.run_forever)
-        self.client_thread = threading.Thread(target=self.client_websocket.run_forever)
-        self.thread_ws.daemon = True
-        self.client_thread.daemon = True
-        try:
-            print("Before threads start")
-            log("Before threads start")
-            self.thread_ws.start()
-            self.client_thread.start()
-            print("After threads start")
-            log("After threads start")
-        except Exception as e:
-            print(e)
-            log(e)
+    #     headers = [
+    #         "Authorization: Bearer " + OPENAI_API_KEY,
+    #         "OpenAI-Beta: realtime=v1"
+    #     ]
+    #     print("First websocket loaded")
+    #     log("First websocket loaded")
+    #     self.openai_ws = websocket.WebSocketApp(
+    #         url,
+    #         header=headers,
+    #         on_open=lambda ws: self.on_openai_open(),
+    #         on_message=lambda ws, msg: self.on_openai_message(msg),
+    #         on_error=lambda ws, error: self.on_error(error)
+    #     )
+    #     print("Second websocket loaded")
+    #     log("Second websocket loaded")
+    #     self.client_websocket = websocket.WebSocketApp(
+    #         url=client_url,
+    #         on_open=lambda ws: print("Connected to client endpoint"),
+    #         on_message=lambda ws, msg: print(f"Message from client: {msg}"),
+    #         on_error=lambda ws, error: self.on_error(error),
+    #         on_close=lambda ws, close_status_code, close_msg: print("Client connection closed")
+    #     )
+    #     # Run the WebSocket in a separate thread
+    #     self.thread_ws = threading.Thread(target=self.openai_ws.run_forever)
+    #     self.client_thread = threading.Thread(target=self.client_websocket.run_forever)
+    #     self.thread_ws.daemon = True
+    #     self.client_thread.daemon = True
+    #     try:
+    #         print("Before threads start")
+    #         log("Before threads start")
+    #         self.thread_ws.start()
+    #         self.client_thread.start()
+    #         print("After threads start")
+    #         log("After threads start")
+    #     except Exception as e:
+    #         print(e)
+    #         log(e)
         
         
     def stop_transcription(self):
@@ -321,8 +368,6 @@ if __name__ == "__main__":
     print("Entering main function")
     log("Entering main function")
     transcriber = OpenAITranscriber()
-    transcriber.start_transcription()
-    
     # Keep the main thread alive to prevent immediate exit
     try:
         print("Transcription running. Press Ctrl+C to exit...")
