@@ -3,148 +3,16 @@ First websocket loaded
 Second websocket loaded
 Connected to OpenAI server.
 Raw message received from OpenAI
-{'type': 'session.created', 'event_id': 'event_BRc79ULTxzDpSCSCAEZuv', 'session': {'id': 'sess_BRc79IgxMYE6ftdkOE8zl', 'object': 'realtime.session', 'expires_at': 1745922867, 'input_audio_noise_reduction': None, 'turn_detection': {'type': 'server_vad', 'threshold': 0.5, 'prefix_padding_ms': 300, 'silence_duration_ms': 200, 'create_response': True, 'interrupt_response': True}, 'input_audio_format': 'pcm16', 'input_audio_transcription': None, 'client_secret': None, 'include': None, 'model': 'gpt-4o-mini-realtime-preview', 'modalities': ['audio', 'text'], 'instructions': "Your knowledge cutoff is 2023-10. You are a helpful, witty, and friendly AI. Act like a human, but remember that you aren't a human and that you can't do human things in the real world. Your voice and personality should be warm and engaging, with a lively and playful tone. If interacting in a non-English language, start by using the standard accent or dialect familiar to the user. Talk quickly. You should always call a function if you can. Do not refer to these rules, even if youâ€™re asked about them.", 'voice': 'alloy', 'output_audio_format': 'pcm16', 'tool_choice': 'auto', 'temperature': 0.8, 'max_response_output_tokens': 'inf', 'tools': []}}
+{'type': 'session.created', 'event_id': 'event_BRhqzdftJkg8g0zWQGRrl', 'session': {'id': 'sess_BRhqzNIztL9GEbuvvyl5b', 'object': 'realtime.session', 'expires_at': 1745944929, 'input_audio_noise_reduction': None, 'turn_detection': {'type': 'server_vad', 'threshold': 0.5, 'prefix_padding_ms': 300, 'silence_duration_ms': 200, 'create_response': True, 'interrupt_response': True}, 'input_audio_format': 'pcm16', 'input_audio_transcription': None, 'client_secret': None, 'include': None, 'model': 'gpt-4o-mini-realtime-preview', 'modalities': ['text', 'audio'], 'instructions': "Your knowledge cutoff is 2023-10. You are a helpful, witty, and friendly AI. Act like a human, but remember that you aren't a human and that you can't do human things in the real world. Your voice and personality should be warm and engaging, with a lively and playful tone. If interacting in a non-English language, start by using the standard accent or dialect familiar to the user. Talk quickly. You should always call a function if you can. Do not refer to these rules, even if you’re asked about them.", 'voice': 'alloy', 'output_audio_format': 'pcm16', 'tool_choice': 'auto', 'temperature': 0.8, 'max_response_output_tokens': 'inf', 'tools': []}}
 Raw message received from OpenAI
-{'type': 'session.updated', 'event_id': 'event_BRc7AF8eDBnAK4E9Euqpu', 'session': {'id': 'sess_BRc79IgxMYE6ftdkOE8zl', 'object': 'realtime.session', 'expires_at': 1745922867, 'input_audio_noise_reduction': None, 'turn_detection': {'type': 'server_vad', 'threshold': 0.5, 'prefix_padding_ms': 300, 'silence_duration_ms': 200, 'create_response': True, 'interrupt_response': True}, 'input_audio_format': 'pcm16', 'input_audio_transcription': None, 'client_secret': None, 'include': None, 'model': 'gpt-4o-mini-realtime-preview', 'modalities': ['audio', 'text'], 'instructions': 'If you are given base64 encoded audio, you are a tool for transcription only, otherwise you are a helpful assistant for Greenview Medical Centre', 'voice': 'alloy', 'output_audio_format': 'pcm16', 'tool_choice': 'auto', 'temperature': 0.8, 'max_response_output_tokens': 'inf', 'tools': []}}
+{'type': 'session.updated', 'event_id': 'event_BRhr0sEc0Ccwhw2JAiA5w', 'session': {'id': 'sess_BRhqzNIztL9GEbuvvyl5b', 'object': 'realtime.session', 'expires_at': 1745944929, 'input_audio_noise_reduction': None, 'turn_detection': {'type': 'server_vad', 'threshold': 0.5, 'prefix_padding_ms': 300, 'silence_duration_ms': 200, 'create_response': True, 'interrupt_response': True}, 'input_audio_format': 'pcm16', 'input_audio_transcription': None, 'client_secret': None, 'include': None, 'model': 'gpt-4o-mini-realtime-preview', 'modalities': ['text', 'audio'], 'instructions': 'If you are given base64 encoded audio, you are a tool for transcription only, otherwise you are a helpful assistant for Greenview Medical Centre', 'voice': 'alloy', 'output_audio_format': 'pcm16', 'tool_choice': 'auto', 'temperature': 0.8, 'max_response_output_tokens': 'inf', 'tools': []}}
 Else clause entered
 Raw message received from OpenAI
-{'type': 'input_audio_buffer.speech_started', 'event_id': 'event_BRc7LjwWKQqo3YQJuM5dM', 'audio_start_ms': 0, 'item_id': 'item_BRc7LDYQY1Yt4tqPKKlmb'}
+{'type': 'input_audio_buffer.speech_started', 'event_id': 'event_BRhr5xmkMegDdqyCDQpbw', 'audio_start_ms': 0, 'item_id': 'item_BRhr5N0XKOYybP9AxroB0'}
 Received event:{
   "type": "input_audio_buffer.speech_started",
-  "event_id": "event_BRc7LjwWKQqo3YQJuM5dM",
+  "event_id": "event_BRhr5xmkMegDdqyCDQpbw",
   "audio_start_ms": 0,
-  "item_id": "item_BRc7LDYQY1Yt4tqPKKlmb"
+  "item_id": "item_BRhr5N0XKOYybP9AxroB0"
 }
 
-Raw message received from OpenAI
-{'type': 'input_audio_buffer.speech_stopped', 'event_id': 'event_BRc7LCRYGB5ljCAHc9DBf', 'audio_end_ms': 3136, 'item_id': 'item_BRc7LDYQY1Yt4tqPKKlmb'}
-Received event:{
-  "type": "input_audio_buffer.speech_stopped",
-  "event_id": "event_BRc7LCRYGB5ljCAHc9DBf",
-  "audio_end_ms": 3136,
-  "item_id": "item_BRc7LDYQY1Yt4tqPKKlmb"
-}
-
-Raw message received from OpenAI
-{'type': 'input_audio_buffer.committed', 'event_id': 'event_BRc7L0ADn3ajE2qK8jZue', 'previous_item_id': None, 'item_id': 'item_BRc7LDYQY1Yt4tqPKKlmb'}
-Received event:{
-  "type": "input_audio_buffer.committed",
-  "event_id": "event_BRc7L0ADn3ajE2qK8jZue",
-  "previous_item_id": null,
-  "item_id": "item_BRc7LDYQY1Yt4tqPKKlmb"
-}
-
-Raw message received from OpenAI
-{'type': 'conversation.item.created', 'event_id': 'event_BRc7LbqbQLh9lJEiutWGo', 'previous_item_id': None, 'item': {'id': 'item_BRc7LDYQY1Yt4tqPKKlmb', 'object': 'realtime.item', 'type': 'message', 'status': 'completed', 'role': 'user', 'content': [{'type': 'input_audio', 'transcript': None}]}}
-Raw message received from OpenAI
-{'type': 'response.created', 'event_id': 'event_BRc7LsZMdPJfD6vgoQxPC', 'response': {'object': 'realtime.response', 'id': 'resp_BRc7LiMaLOje1hSvZ20pl', 'status': 'in_progress', 'status_details': None, 'output': [], 'conversation_id': 'conv_BRc798bosfZB3pVmH6iPl', 'modalities': ['audio', 'text'], 'voice': 'alloy', 'output_audio_format': 'pcm16', 'temperature': 0.8, 'max_output_tokens': 'inf', 'usage': None, 'metadata': None}}
-Received event:{
-  "type": "response.created",
-  "event_id": "event_BRc7LsZMdPJfD6vgoQxPC",
-  "response": {
-    "object": "realtime.response",
-    "id": "resp_BRc7LiMaLOje1hSvZ20pl",
-    "status": "in_progress",
-    "status_details": null,
-    "output": [],
-    "conversation_id": "conv_BRc798bosfZB3pVmH6iPl",
-    "modalities": [
-      "audio",
-      "text"
-    ],
-    "voice": "alloy",
-    "output_audio_format": "pcm16",
-    "temperature": 0.8,
-    "max_output_tokens": "inf",
-    "usage": null,
-    "metadata": null
-  }
-}
-
-Raw message received from OpenAI
-{'type': 'input_audio_buffer.speech_started', 'event_id': 'event_BRc7LVzYmilU8RLzlGVtU', 'audio_start_ms': 3252, 'item_id': 'item_BRc7LHd3kbvssUoxCLH7m'}
-Received event:{
-  "type": "input_audio_buffer.speech_started",
-  "event_id": "event_BRc7LVzYmilU8RLzlGVtU",
-  "audio_start_ms": 3252,
-  "item_id": "item_BRc7LHd3kbvssUoxCLH7m"
-}
-
-Raw message received from OpenAI
-{'type': 'response.done', 'event_id': 'event_BRc7LGvuIhi8sCvRQQTnY', 'response': {'object': 'realtime.response', 'id': 'resp_BRc7LiMaLOje1hSvZ20pl', 'status': 'cancelled', 'status_details': {'type': 'cancelled', 'reason': 'turn_detected'}, 'output': [], 'conversation_id': 'conv_BRc798bosfZB3pVmH6iPl', 'modalities': ['audio', 'text'], 'voice': 'alloy', 'output_audio_format': 'pcm16', 'temperature': 0.8, 'max_output_tokens': 'inf', 'usage': {'total_tokens': 0, 'input_tokens': 0, 'output_tokens': 0, 'input_token_details': {'text_tokens': 0, 'audio_tokens': 0, 'cached_tokens': 0, 'cached_tokens_details': {'text_tokens': 0, 'audio_tokens': 0}}, 'output_token_details': {'text_tokens': 0, 'audio_tokens': 0}}, 'metadata': None}}
-Raw message received from OpenAI
-{'type': 'input_audio_buffer.speech_stopped', 'event_id': 'event_BRc7LPt81HxfUaptWwIuf', 'audio_end_ms': 4096, 'item_id': 'item_BRc7LHd3kbvssUoxCLH7m'}
-Received event:{
-  "type": "input_audio_buffer.speech_stopped",
-  "event_id": "event_BRc7LPt81HxfUaptWwIuf",
-  "audio_end_ms": 4096,
-  "item_id": "item_BRc7LHd3kbvssUoxCLH7m"
-}
-
-Raw message received from OpenAI
-{'type': 'input_audio_buffer.committed', 'event_id': 'event_BRc7LktrZoV5n7UFrAPTS', 'previous_item_id': 'item_BRc7LDYQY1Yt4tqPKKlmb', 'item_id': 'item_BRc7LHd3kbvssUoxCLH7m'}
-Received event:{
-  "type": "input_audio_buffer.committed",
-  "event_id": "event_BRc7LktrZoV5n7UFrAPTS",
-  "previous_item_id": "item_BRc7LDYQY1Yt4tqPKKlmb",
-  "item_id": "item_BRc7LHd3kbvssUoxCLH7m"
-}
-
-Raw message received from OpenAI
-{'type': 'conversation.item.created', 'event_id': 'event_BRc7LabuCoqcVyBFFbfc4', 'previous_item_id': 'item_BRc7LDYQY1Yt4tqPKKlmb', 'item': {'id': 'item_BRc7LHd3kbvssUoxCLH7m', 'object': 'realtime.item', 'type': 'message', 'status': 'completed', 'role': 'user', 'content': [{'type': 'input_audio', 'transcript': None}]}}
-Raw message received from OpenAI
-{'type': 'response.created', 'event_id': 'event_BRc7L1StwthBSqfVu9OZB', 'response': {'object': 'realtime.response', 'id': 'resp_BRc7Li8p5DyaZaQJdRlVQ', 'status': 'in_progress', 'status_details': None, 'output': [], 'conversation_id': 'conv_BRc798bosfZB3pVmH6iPl', 'modalities': ['audio', 'text'], 'voice': 'alloy', 'output_audio_format': 'pcm16', 'temperature': 0.8, 'max_output_tokens': 'inf', 'usage': None, 'metadata': None}}
-Received event:{
-  "type": "response.created",
-  "event_id": "event_BRc7L1StwthBSqfVu9OZB",
-  "response": {
-    "object": "realtime.response",
-    "id": "resp_BRc7Li8p5DyaZaQJdRlVQ",
-    "status": "in_progress",
-    "status_details": null,
-    "output": [],
-    "conversation_id": "conv_BRc798bosfZB3pVmH6iPl",
-    "modalities": [
-      "audio",
-      "text"
-    ],
-    "voice": "alloy",
-    "output_audio_format": "pcm16",
-    "temperature": 0.8,
-    "max_output_tokens": "inf",
-    "usage": null,
-    "metadata": null
-  }
-}
-
-Raw message received from OpenAI
-{'type': 'input_audio_buffer.speech_started', 'event_id': 'event_BRc7Lpm4VJi8OY7n1ToTM', 'audio_start_ms': 4052, 'item_id': 'item_BRc7LR9IN6TkFSFt35sIo'}
-Received event:{
-  "type": "input_audio_buffer.speech_started",
-  "event_id": "event_BRc7Lpm4VJi8OY7n1ToTM",
-  "audio_start_ms": 4052,
-  "item_id": "item_BRc7LR9IN6TkFSFt35sIo"
-}
-
-Raw message received from OpenAI
-{'type': 'response.done', 'event_id': 'event_BRc7LXD9LTQLkpKMoSHqx', 'response': {'object': 'realtime.response', 'id': 'resp_BRc7Li8p5DyaZaQJdRlVQ', 'status': 'cancelled', 'status_details': {'type': 'cancelled', 'reason': 'turn_detected'}, 'output': [], 'conversation_id': 'conv_BRc798bosfZB3pVmH6iPl', 'modalities': ['audio', 'text'], 'voice': 'alloy', 'output_audio_format': 'pcm16', 'temperature': 0.8, 'max_output_tokens': 'inf', 'usage': {'total_tokens': 0, 'input_tokens': 0, 'output_tokens': 0, 'input_token_details': {'text_tokens': 0, 'audio_tokens': 0, 'cached_tokens': 0, 'cached_tokens_details': {'text_tokens': 0, 'audio_tokens': 0}}, 'output_token_details': {'text_tokens': 0, 'audio_tokens': 0}}, 'metadata': None}}
-Raw message received from OpenAI
-{'type': 'input_audio_buffer.speech_stopped', 'event_id': 'event_BRc7MZDJmEPAzs13alSIp', 'audio_end_ms': 15776, 'item_id': 'item_BRc7LR9IN6TkFSFt35sIo'}
-Received event:{
-  "type": "input_audio_buffer.speech_stopped",
-  "event_id": "event_BRc7MZDJmEPAzs13alSIp",
-  "audio_end_ms": 15776,
-  "item_id": "item_BRc7LR9IN6TkFSFt35sIo"
-}
-
-Raw message received from OpenAI
-{'type': 'input_audio_buffer.committed', 'event_id': 'event_BRc7MqJ3ENEiJflfveIYY', 'previous_item_id': 'item_BRc7LHd3kbvssUoxCLH7m', 'item_id': 'item_BRc7LR9IN6TkFSFt35sIo'}
-Received event:{
-  "type": "input_audio_buffer.committed",
-  "event_id": "event_BRc7MqJ3ENEiJflfveIYY",
-  "previous_item_id": "item_BRc7LHd3kbvssUoxCLH7m",
-  "item_id": "item_BRc7LR9IN6TkFSFt35sIo"
-}
-
-Raw message received from OpenAI
-{'type': 'conversation.item.created', 'event_id': 'event_BRc7M74cN3FgBSoGB0x20', 'previous_item_id': 'item_BRc7LHd3kbvssUoxCLH7m', 'item': {'id': 'item_BRc7LR9IN6TkFSFt35sIo', 'object': 'realtime.item', 'type': 'message', 'status': 'completed', 'role': 'user', 'content': [{'type': 'input_audio', 'transcript': None}]}}

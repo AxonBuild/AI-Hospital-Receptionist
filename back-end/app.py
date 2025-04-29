@@ -12,13 +12,17 @@ from rag import rag
 import uuid
 
 # Set up logging
+def log(text):
+    file = open("server_logs.txt", "w")
+    file.write(text)
+    file.close()
+    
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger("websocket-audio")
-
 app = FastAPI()
 
 # Enable CORS to allow requests from Next.js frontend
@@ -45,13 +49,14 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     logger.info("WebSocket connection accepted")
     connected_clients.add(websocket)
-    # Store reference using websocket as key
     connection_id = str(uuid.uuid4())
     websocket.connection_id = connection_id
+    #transcriber = OpenAITranscriber()
     try:
         while True:
             # Receive data from client
-            data = await websocket.receive_json()
+            data = await websocket.receive_json()  
+            log(data)
             print(data)
             if(data['event_type'] == 'audio_response_transmitting'):
                 for client in connected_clients:
@@ -59,10 +64,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     print("Sent to client")
                     logger.info(f"Received message: {data}...")
             elif(data['event_type'] == 'audio_input_transmitting'):
-                pass
-                # transcriber = OpenAITranscriber()
-                # event_data = data['event_data']
-                # transcriber.send_audio_to_openai(event_data)
+                event_data = data['event_data']
+                transcriber.send_audio_to_openai(event_data)
             # try:
             #     # Parse the JSON data
             #     json_data = json.loads(data)
