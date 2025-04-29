@@ -10,12 +10,13 @@ import asyncio
 from transcription import OpenAITranscriber
 from rag import rag
 import uuid
+import traceback
 
-# Set up logging
 def log(text):
-    file = open("server_logs.txt", "w")
-    file.write(text)
-    file.close()
+     with open("server_logs.txt", "a") as file:
+        if not isinstance(text, str):
+            text = str(text)
+        file.write(text + '\n')
     
 logging.basicConfig(
     level=logging.INFO,
@@ -46,83 +47,94 @@ async def get():
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    logger.info("WebSocket connection accepted")
-    connected_clients.add(websocket)
-    connection_id = str(uuid.uuid4())
-    websocket.connection_id = connection_id
-    #transcriber = OpenAITranscriber()
     try:
-        while True:
-            # Receive data from client
-            data = await websocket.receive_json()  
-            log(data)
-            print(data)
-            if(data['event_type'] == 'audio_response_transmitting'):
-                for client in connected_clients:
-                    await client.send_text(json.dumps(data))
-                    print("Sent to client")
-                    logger.info(f"Received message: {data}...")
-            elif(data['event_type'] == 'audio_input_transmitting'):
-                event_data = data['event_data']
-                transcriber.send_audio_to_openai(event_data)
-            # try:
-            #     # Parse the JSON data
-            #     json_data = json.loads(data)
-                
-            #     # Check message type
-            #     if "type" in json_data:
-            #         if json_data["type"] == "audio_data":
-            #             # Extract audio data
-            #             format_type = json_data.get("format", "unknown")
-            #             base64_data = json_data.get("data", "")
-                        
-            #             logger.info(f"Received audio chunk in {format_type} format, size: {len(base64_data)} chars")
-                        
-            #             # Start transcription if not already started
-            #             if connection_id in active_transcribers and not hasattr(active_transcribers[connection_id], 'started'):
-            #                 active_transcribers[connection_id].started = True
-            #                 success = active_transcribers[connection_id].start_transcription()
-            #                 if success:
-            #                     logger.info("Transcription started")
-            #                 else:
-            #                     logger.error("Failed to start transcription")
-                        
-            #             # Forward the received audio data back to the client
-            #             await websocket.send_text(json.dumps({
-            #                 "type": "audio_response",
-            #                 "audio_data": base64_data,
-            #                 "message": f"Echoing audio data of {len(base64_data)} chars",
-            #                 "timestamp": time.time()
-            #             }))
-                        
-            #         elif json_data["type"] == "command" and json_data.get("command") == "stop":
-            #             logger.info("Received stop command")
-                        
-            #             # Stop transcription if active
-            #             if connection_id in active_transcribers:
-            #                 active_transcribers[connection_id].stop_transcription()
-            #                 del active_transcribers[connection_id]
-            #                 logger.info(f"Transcription stopped for connection {connection_id}")
-                        
-            #             await websocket.send_text(json.dumps({
-            #                 "status": "complete",
-            #                 "message": "Recording stopped",
-            #                 "timestamp": time.time()
-            #             }))
-            #     else:
-            #         # Simply echo back any other message
-            #         logger.info("Received non-typed message, echoing back")
-            #         await websocket.send_text(data)
+        await websocket.accept()
+        logger.info("WebSocket connection accepted")
+        connected_clients.add(websocket)
+        connection_id = str(uuid.uuid4())
+        websocket.connection_id = connection_id
+        #transcriber = OpenAITranscriber()
+        try:
+            while True:
+                # Receive data from client
+                data = await websocket.receive_json()  
+                log(data)
+                print(data)
+                if(data['event_type'] == 'audio_response_transmitting'):
+                    for client in connected_clients:
+                        await client.send_json(data)
+                        print("Sent to client")
+                        logger.info(f"Received message: {data}...")
+                # elif(data['event_type'] == 'audio_input_transmitting'):
+                #     event_data = data['event_data']
+                    #transcriber.send_audio_to_openai(event_data)
+                # try:
+                #     # Parse the JSON data
+                #     json_data = json.loads(data)
                     
-            # except json.JSONDecodeError:
-            #     logger.warning("Received non-JSON data")
-            #     await websocket.send_text(data)  # Echo back the raw data
-                
+                #     # Check message type
+                #     if "type" in json_data:
+                #         if json_data["type"] == "audio_data":
+                #             # Extract audio data
+                #             format_type = json_data.get("format", "unknown")
+                #             base64_data = json_data.get("data", "")
+                            
+                #             logger.info(f"Received audio chunk in {format_type} format, size: {len(base64_data)} chars")
+                            
+                #             # Start transcription if not already started
+                #             if connection_id in active_transcribers and not hasattr(active_transcribers[connection_id], 'started'):
+                #                 active_transcribers[connection_id].started = True
+                #                 success = active_transcribers[connection_id].start_transcription()
+                #                 if success:
+                #                     logger.info("Transcription started")
+                #                 else:
+                #                     logger.error("Failed to start transcription")
+                            
+                #             # Forward the received audio data back to the client
+                #             await websocket.send_text(json.dumps({
+                #                 "type": "audio_response",
+                #                 "audio_data": base64_data,
+                #                 "message": f"Echoing audio data of {len(base64_data)} chars",
+                #                 "timestamp": time.time()
+                #             }))
+                            
+                #         elif json_data["type"] == "command" and json_data.get("command") == "stop":
+                #             logger.info("Received stop command")
+                            
+                #             # Stop transcription if active
+                #             if connection_id in active_transcribers:
+                #                 active_transcribers[connection_id].stop_transcription()
+                #                 del active_transcribers[connection_id]
+                #                 logger.info(f"Transcription stopped for connection {connection_id}")
+                            
+                #             await websocket.send_text(json.dumps({
+                #                 "status": "complete",
+                #                 "message": "Recording stopped",
+                #                 "timestamp": time.time()
+                #             }))
+                #     else:
+                #         # Simply echo back any other message
+                #         logger.info("Received non-typed message, echoing back")
+                #         await websocket.send_text(data)
+                        
+                # except json.JSONDecodeError:
+                #     logger.warning("Received non-JSON data")
+                #     await websocket.send_text(data)  # Echo back the raw data
+                    
+        except Exception as e:
+            logger.error(f"WebSocket error: {str(e)}")
+            log(f"WebSocket error: {str(e)}")
+        finally:
+            logger.info("WebSocket connection closed")
     except Exception as e:
-        logger.error(f"WebSocket error: {str(e)}")
-    finally:
-        logger.info("WebSocket connection closed")
-        
+        print(e)
+        log(e)
+        traceback.print_exc()
+
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+    try:
+        uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+    except Exception as e:
+        print(e)
+        log(e)
+        traceback.print_exc()

@@ -54,7 +54,6 @@ class OpenAITranscriber:
         print("env loaded")
         log("env loaded")
         OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-        sslopt = {"cert_reqs": ssl.CERT_NONE}
         url = "wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview"
         client_url = "ws://localhost:8000/ws"
         
@@ -82,7 +81,7 @@ class OpenAITranscriber:
         )
         # Run the WebSocket in a separate thread
         #temporary turning off of ssl certificate verification
-        self.thread_ws = threading.Thread(target=self.openai_ws.run_forever(sslopt=sslopt))
+        self.thread_ws = threading.Thread(target=self.openai_ws.run_forever)
         self.client_thread = threading.Thread(target=self.client_websocket.run_forever)
         self.thread_ws.daemon = True
         self.client_thread.daemon = True
