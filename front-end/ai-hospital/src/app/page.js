@@ -128,10 +128,8 @@ export default function Home()
         if (data.event_type == "audio_response_transmitting") {
           log("Received audio response, attempting to play...");
           
-          const audioDataObj = data.event_data//JSON.parse(data.event_data)
-      
           // Convert base64 to array buffer
-          const base64Data = audioDataObj.data;
+          const base64Data = data.event_data;
           const binaryString = atob(base64Data);
           const bytes = new Uint8Array(binaryString.length);
           
