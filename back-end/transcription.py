@@ -33,10 +33,13 @@ def base64_encode_audio(float32_array):
     return encoded
     
 def log(text):
-     with open("logs.txt", "a") as file:
-        if not isinstance(text, str):
-            text = str(text)
-        file.write(text + '\n')
+    with open("logs.txt", "a") as file:
+        try:
+            if not isinstance(text, str):
+                text = str(text)
+            file.write(text + '\n')
+        except:
+            print(f"Error logging {text}")
 class OpenAITranscriber:
     def __init__(self):
         self.client_websocket = None
@@ -47,6 +50,7 @@ class OpenAITranscriber:
         self.audio_thread = None
         self.sent_audio = False
         self.current_audio = None
+        self.sent_rag = False
         file = open("logs.txt", "w")
         file.write("")
         file.close()
@@ -179,15 +183,14 @@ class OpenAITranscriber:
         log(data)
         
         if(data['type'] == "session.created"):
-            rag2(self.openai_ws, "Where is greenview hospital located?")
-            # event = {
-            #     "type": "session.update",
-            #     "session": {
-            #         "instructions": "If you are given base64 encoded audio, you are a tool for transcription only, otherwise you are a helpful assistant for Greenview Medical Centre"
-            #     }
-            # }
-            # if(self.websocket_working("openai")):
-            #     self.openai_ws.send(json.dumps(event))
+            event = {
+                "type": "session.update",
+                "session": {
+                    "instructions": "If you are given base64 encoded audio, you are a tool for transcription only, otherwise you are a helpful assistant for Greenview Medical Centre"
+                }
+            }
+            if(self.websocket_working("openai")):
+                self.openai_ws.send(json.dumps(event))
             
         elif(data['type'] == "session.updated" and self.sent_audio == False):    
             print("Else clause entered")
@@ -205,7 +208,7 @@ class OpenAITranscriber:
                     "type": "input_audio_buffer.append",
                     "audio": base64_chunk
                 }
-                time.sleep(1)
+                time.sleep(2.5)
                 if(self.websocket_working("openai")):
                     self.openai_ws.send(json.dumps(event))
                     self.sent_audio = True
@@ -224,39 +227,43 @@ class OpenAITranscriber:
         #     "content": [{"type": "input_text", "text": text}]
         #     }
         #     }
-        #     time.sleep(1)
+        #     time.sleep(2.5)
         #     if(self.websocket_working("openai")):
         #         self.openai_ws.send(json.dumps(text_message))
-        elif(data['type'] == "response.done" and data.get("response", {}).get("metadata", {}).get("topic") == "rag"):
-            print("Rag found: " ,data)
-            log("Rag found: " + json.dumps(data))
-            rag_response = data['response']['output'][0]['content'][0]['text']
-            print("Rag response: ", rag_response)
-            log("Rag response: " + str(rag_response))
-            event_id = data['event_id']
-            text_message = {
-            "event_id": event_id,
-            "type": "conversation.item.create",
-            "item": {
-            "type": "message",
-            "role": "user",
-            "content": [{"type": "input_text", "text": rag_response}]
-            }
-            }
-            time.sleep(1)
-            if(self.websocket_working("openai")):
-                self.openai_ws.send(json.dumps(text_message))
-                self.sent_audio = True
         elif(data['type'] == "response.done"):
-            print(data)
-            log(data)
+            try:
+                if(data.get("response", {}).get("metadata", {}).get("topic") == "rag"):
+                    print("Rag found: ", data)
+                    log("Rag found: " + json.dumps(data))
+                    rag_response = data['response']['output'][0]['content'][0]['text']
+                    print("Rag response: ", rag_response)
+                    log("Rag response: " + str(rag_response))
+                    event_id = data['event_id']
+                    text_message = {
+                    "event_id": event_id,
+                    "type": "conversation.item.create",
+                    "item": {
+                    "type": "message",
+                    "role": "user",
+                    "content": [{"type": "input_text", "text": rag_response}]
+                    }
+                    }
+                    time.sleep(2.5)
+                    if(self.websocket_working("openai")):
+                        self.openai_ws.send(json.dumps(text_message))
+                        self.sent_audio = True
+            except:
+                print("Error parsing json rag response")
+                print(data)
+                log(data)
+                log("Error parsing json rag response")
         elif(data['type'] == "conversation.item.created"):
             message = {
             "event_id": data["event_id"],
             "type": "response.create"   
             }
             self.current_audio = []
-            time.sleep(1)
+            time.sleep(2.5)
             if(self.websocket_working("openai")):
                 self.openai_ws.send(json.dumps(message))
                 
@@ -287,12 +294,15 @@ class OpenAITranscriber:
                 #self.sent_audio = False
             else:
                 return
-        elif(data['type'] == "response.audio_transcript.done" and self.sent_audio == False):
+        elif(data['type'] == "response.audio_transcript.done" and self.sent_audio == False and self.sent_rag == False):
             if(data['transcript']):
                 message = data['transcript']
                 self.transcript_websocket.send(message)
                 log("Sending transcript for rag response")
-                rag2(message)
+                rag2(self.openai_ws, message)
+                log("rag2 ran")
+                print("ragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragrag")
+                self.sent_rag = True
                 
         elif(data['type'] == "response.done"):
             return
@@ -348,7 +358,7 @@ class OpenAITranscriber:
     #         log("After threads start")
     #     except Exception as e:
     #         print(e)
-    #         log(e)
+    #         log(e) 
         
         
     def stop_transcription(self):
@@ -382,7 +392,7 @@ if __name__ == "__main__":
         print("Transcription running. Press Ctrl+C to exit...")
         log("Transcription running. Press Ctrl+C to exit...")
         while True:
-            time.sleep(1)
+            time.sleep(2.5)
     except KeyboardInterrupt:
         print("Stopping transcription...")
         log("Stopping transcription...")
