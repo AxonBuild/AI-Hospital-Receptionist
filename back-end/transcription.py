@@ -13,7 +13,7 @@ import threading
 import asyncio
 import soundfile as sf
 from reconstruct_audio import reconstruct_audio
-from rag import rag
+from rag import rag, rag2
 import ssl
 
 def amplify_audio(audio_data, gain=3.0):
@@ -179,14 +179,15 @@ class OpenAITranscriber:
         log(data)
         
         if(data['type'] == "session.created"):
-            event = {
-                "type": "session.update",
-                "session": {
-                    "instructions": "If you are given base64 encoded audio, you are a tool for transcription only, otherwise you are a helpful assistant for Greenview Medical Centre"
-                }
-            }
-            if(self.websocket_working("openai")):
-                self.openai_ws.send(json.dumps(event))
+            rag2(self.openai_ws, "Where is greenview hospital located?")
+            # event = {
+            #     "type": "session.update",
+            #     "session": {
+            #         "instructions": "If you are given base64 encoded audio, you are a tool for transcription only, otherwise you are a helpful assistant for Greenview Medical Centre"
+            #     }
+            # }
+            # if(self.websocket_working("openai")):
+            #     self.openai_ws.send(json.dumps(event))
             
         elif(data['type'] == "session.updated" and self.sent_audio == False):    
             print("Else clause entered")
@@ -226,7 +227,29 @@ class OpenAITranscriber:
         #     time.sleep(1)
         #     if(self.websocket_working("openai")):
         #         self.openai_ws.send(json.dumps(text_message))
-        
+        elif(data['type'] == "response.done" and data.get("response", {}).get("metadata", {}).get("topic") == "rag"):
+            print("Rag found: " ,data)
+            log("Rag found: " + json.dumps(data))
+            rag_response = data['response']['output'][0]['content'][0]['text']
+            print("Rag response: ", rag_response)
+            log("Rag response: " + str(rag_response))
+            event_id = data['event_id']
+            text_message = {
+            "event_id": event_id,
+            "type": "conversation.item.create",
+            "item": {
+            "type": "message",
+            "role": "user",
+            "content": [{"type": "input_text", "text": rag_response}]
+            }
+            }
+            time.sleep(1)
+            if(self.websocket_working("openai")):
+                self.openai_ws.send(json.dumps(text_message))
+                self.sent_audio = True
+        elif(data['type'] == "response.done"):
+            print(data)
+            log(data)
         elif(data['type'] == "conversation.item.created"):
             message = {
             "event_id": data["event_id"],
@@ -269,21 +292,8 @@ class OpenAITranscriber:
                 message = data['transcript']
                 self.transcript_websocket.send(message)
                 log("Sending transcript for rag response")
-                response = rag(message)
-                event_id = data['event_id']
-                text_message = {
-                "event_id": event_id,
-                "type": "conversation.item.create",
-                "item": {
-                "type": "message",
-                "role": "user",
-                "content": [{"type": "input_text", "text": response}]
-                }
-                }
-                time.sleep(1)
-                if(self.websocket_working("openai")):
-                    self.openai_ws.send(json.dumps(text_message))
-                    self.sent_audio = True
+                rag2(message)
+                
         elif(data['type'] == "response.done"):
             return
         else:

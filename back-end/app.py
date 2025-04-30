@@ -39,6 +39,7 @@ app.add_middleware(
 active_transcribers = {}
 
 connected_clients = set()
+disconnected_clients = set()
 
 @app.get("/")
 async def get():
@@ -62,9 +63,15 @@ async def websocket_endpoint(websocket: WebSocket):
                 print(data)
                 if(data['event_type'] == 'audio_response_transmitting'):
                     for client in connected_clients:
-                        await client.send_json(data)
-                        print("Sent to client")
-                        logger.info(f"Received message: {data}...")
+                        try:
+                            await client.send_json(data)
+                            print("Sent to client")
+                            logger.info(f"Received message: {data}...")
+                        except Exception as e:
+                            logger.warning(e)
+                            disconnected_clients.add(client)
+                    # Remove any clients that failed
+                    connected_clients.difference_update(disconnected_clients)
                 # elif(data['event_type'] == 'audio_input_transmitting'):
                 #     event_data = data['event_data']
                     #transcriber.send_audio_to_openai(event_data)
@@ -125,6 +132,7 @@ async def websocket_endpoint(websocket: WebSocket):
             logger.error(f"WebSocket error: {str(e)}")
             log(f"WebSocket error: {str(e)}")
         finally:
+            connected_clients.discard(websocket)
             logger.info("WebSocket connection closed")
     except Exception as e:
         print(e)

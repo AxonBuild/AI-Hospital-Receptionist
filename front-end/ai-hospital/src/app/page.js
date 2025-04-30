@@ -123,12 +123,12 @@ export default function Home()
       try {
         // Try to parse as JSON
         const data = JSON.parse(event.data);
-        log(JSON.stringify(data))
+        log(JSON.stringify(data).slice(0, 20))
         // Handle different message types
-        if (data.type === "audio_response_transmitting") {
+        if (data.event_type == "audio_response_transmitting") {
           log("Received audio response, attempting to play...");
           
-          const audioDataObj = JSON.parse(data.audio_data)
+          const audioDataObj = data.event_data//JSON.parse(data.event_data)
       
           // Convert base64 to array buffer
           const base64Data = audioDataObj.data;
@@ -175,17 +175,27 @@ export default function Home()
         if (dataRef.current) {
           dataRef.current.innerHTML = event.data;
         }
+        mic.classList.remove("opacity-animation")
+        micText.classList.remove("opacity-animation")
         log(`Error handling WebSocket message: ${e.message}`);
         console.error("Error handling WebSocket message:", e);
       }
     };
     
     socketRef.current.onerror = (error) => {
+      const mic = document.getElementById("mic")
+      const micText = document.getElementById("mic-text")
+      mic.classList.remove("opacity-animation")
+      micText.classList.remove("opacity-animation")
       log(`WebSocket error occurred`);
       console.log("WebSocket error:", error.message || "Unknown error"); ;
     };
     
     socketRef.current.onclose = (event) => {
+      const mic = document.getElementById("mic")
+      const micText = document.getElementById("mic-text")
+      mic.classList.remove("opacity-animation")
+      micText.classList.remove("opacity-animation")
       log(`WebSocket connection closed: ${event.code} ${event.reason}`);
     };
   };    
