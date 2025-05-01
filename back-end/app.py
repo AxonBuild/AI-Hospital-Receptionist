@@ -151,11 +151,11 @@ async def websocket_endpoint(websocket: WebSocket):
         # Create or reuse transcriber for this connection
         connection_id = str(uuid.uuid4())
         if connection_id not in transcriber_instances:
-            transcriber_instances[connection_id] = OpenAITranscriber()
+            transcriber_instances[connection_id] = OpenAITranscriber(websocket)
         
-        transcriber = transcriber_instances[connection_id]
-        transcriber = OpenAITranscriber()
-        transcriber.set_client_websocket(websocket)
+        #transcriber = transcriber_instances[connection_id]
+        #transcriber = OpenAITranscriber(websocket)
+        #transcriber.set_client_websocket(websocket)
         try:
             while True:
                 data = await websocket.receive_json()  
@@ -171,7 +171,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     connected_clients.difference_update(disconnected_clients)
                     
                 elif data['event_type'] == 'audio_input_transmitting':
-                    transcriber.send_audio_to_openai(data['event_data'])
+                    transcriber_instances[connection_id].send_audio_to_openai(data['event_data'])
                     
         except Exception as e:
             logger.error(f"WebSocket error: {str(e)}")

@@ -42,8 +42,8 @@ def log(text):
         except:
             print(f"Error logging {text}")
 class OpenAITranscriber:
-    def __init__(self):
-        self.client_websocket = None
+    def __init__(self, client_websocket):
+        self.client_websocket = client_websocket
         self.openai_ws = None
         self.stream_active = False
         self.audio_thread = None
@@ -78,12 +78,12 @@ class OpenAITranscriber:
         )
         
         # Client WebSocket
-        self.client_websocket = websocket.WebSocketApp(
-            "ws://localhost:8000/ws",
-            on_open=self.on_client_open,
-            on_error=self.on_error,
-            on_close=self.on_client_close
-        )
+        # self.client_websocket = websocket.WebSocketApp(
+        #     "ws://localhost:8000/ws",
+        #     on_open=self.on_client_open,
+        #     on_error=self.on_error,
+        #     on_close=self.on_client_close
+        # )
         
         # Start threads
         self.start_websocket_threads()
@@ -95,13 +95,13 @@ class OpenAITranscriber:
                 target=self.openai_ws.run_forever,
                 daemon=True
             )
-            self.client_thread = threading.Thread(
-                target=self.client_websocket.run_forever,
-                daemon=True
-            )
+            # self.client_thread = threading.Thread(
+            #     target=self.client_websocket.run_forever,
+            #     daemon=True
+            # )
             
             self.openai_thread.start()
-            self.client_thread.start()
+            #self.client_thread.start()
             
         except Exception as e:
             print(f"Error starting WebSocket threads: {e}")
