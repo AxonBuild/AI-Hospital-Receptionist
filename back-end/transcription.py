@@ -58,56 +58,44 @@ class OpenAITranscriber:
         
         load_dotenv()
         self.initialize_websockets()
+    
+    async def test(self):
+        message = json.dumps({
+            "event_type": "connection_established",
+            "event_data": "ready"
+        })
+        await self.client_websocket.send_json(message)
+    def is_openai_connected(self):
+        return (self.openai_ws and hasattr(self.openai_ws, 'sock') 
+            and self.openai_ws.sock and self.openai_ws.sock.connected)
         
     def initialize_websockets(self):
-        """Initialize WebSocket connections"""
-        OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-        headers = [
-            "Authorization: Bearer " + OPENAI_API_KEY,
-            "OpenAI-Beta: realtime=v1"
-        ]
-        
-        # OpenAI WebSocket
-        self.openai_ws = websocket.WebSocketApp(
-            "wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview",
-            header=headers,
-            on_open=self.on_openai_open,
-            on_message=self.on_openai_message,
-            on_error=self.on_error,
-            on_close=self.on_openai_close
-        )
-        
-        # Client WebSocket
-        # self.client_websocket = websocket.WebSocketApp(
-        #     "ws://localhost:8000/ws",
-        #     on_open=self.on_client_open,
-        #     on_error=self.on_error,
-        #     on_close=self.on_client_close
-        # )
-        
-        # Start threads
-        self.start_websocket_threads()
-        
-    def start_websocket_threads(self):
-        """Start WebSocket threads with proper error handling"""
         try:
+            OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+            if not OPENAI_API_KEY:
+                raise ValueError("Missing OPENAI_API_KEY")
+            
+            headers = ["Authorization: Bearer " + OPENAI_API_KEY, "OpenAI-Beta: realtime=v1"]
+            
+            self.openai_ws = websocket.WebSocketApp(
+                "wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview",
+                header=headers,
+                on_open=self.on_openai_open,
+                on_message=self.on_openai_message,
+                on_error=self.on_error,
+                on_close=self.on_openai_close
+            )
+            
             self.openai_thread = threading.Thread(
                 target=self.openai_ws.run_forever,
                 daemon=True
             )
-            # self.client_thread = threading.Thread(
-            #     target=self.client_websocket.run_forever,
-            #     daemon=True
-            # )
-            
             self.openai_thread.start()
-            #self.client_thread.start()
-            
+            time.sleep(1)  # Give time for connection
         except Exception as e:
-            print(f"Error starting WebSocket threads: {e}")
-            log(f"Error starting WebSocket threads: {e}")
-
-    # Add these new methods for better connection management
+            print(f"WebSocket initialization failed: {e}")
+            log(f"WebSocket initialization failed: {e}")    
+        # Add these new methods for better connection management
     def on_openai_close(self, ws, close_status_code, close_msg):
         print(f"OpenAI WebSocket closed: {close_status_code} - {close_msg}")
         log(f"OpenAI WebSocket closed: {close_status_code} - {close_msg}")
@@ -139,31 +127,22 @@ class OpenAITranscriber:
     def send_audio_to_openai(self, base64_audio):
         with self._ws_lock:
             try:
-                # Decode base64 audio
-                audio_bytes = base64.b64decode(base64_audio)
-                
-                # Convert to numpy array
-                audio_array = np.frombuffer(audio_bytes, dtype=np.int16)
-                audio_array = audio_array.astype(np.float32) / 32768.0  # Convert to float32
-                
-                print("Sending audio chunk with shape:", audio_array.shape)
-                log(f"Sending audio chunk with shape: {audio_array.shape}")
-                
+                if not self.is_openai_connected():
+                    print("OpenAI socket not connected, cannot send audio")
+                    return False
+
                 event = {
                     "type": "input_audio_buffer.append",
-                    "audio": base64_audio  # Send the original base64 or process as needed
+                    "audio": base64_audio
                 }
+                self.openai_ws.send(json.dumps(event))
+                return True
                 
-                if self.openai_ws and self.openai_ws.sock and self.openai_ws.sock.connected:
-                    self.openai_ws.send(json.dumps(event))
-                else:
-                    print("OpenAI socket closed")
-                    log("OpenAI socket closed")
-                    
             except Exception as e:
-                print(f"Error processing audio: {str(e)}")
-                log(f"Error processing audio: {str(e)}")
-                    
+                print(f"Error sending audio to OpenAI: {str(e)}")
+                log(f"Error sending audio to OpenAI: {str(e)}")
+                return False
+                            
     def on_openai_open(self, ws):
         print("Connected to OpenAI server.")
         log("Connected to OpenAI server.")
@@ -209,7 +188,12 @@ class OpenAITranscriber:
         #         print(f"Error sending to client: {e}")
         print(data)
         log(data)
-        
+         # Create event loop if none exists
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
         if(data['type'] == "session.created"):
             event = {
                 "type": "session.update",
@@ -299,10 +283,11 @@ class OpenAITranscriber:
             print(data)
             log(data)
             
-        elif(data['type'] == "response.audio.delta" and self.sent_audio == True):
+        elif(data['type'] == "response.audio.delta"):
             print(data)
             log(data)
             self.current_audio.append(data['delta'])
+            log("Data added into array")
             
         elif(data['type'] == "response.audio.done"): #and self.sent_audio == True):
             if(len(self.current_audio) >= 0):
@@ -310,19 +295,11 @@ class OpenAITranscriber:
                 to_send_audio = reconstruct_audio(self.current_audio)
                 print(to_send_audio)
                 base_64_audio = base64_encode_audio(to_send_audio) #encoding before sending
-                message = json.dumps({
-                    "event_type": "audio_response_transmitting",
-                    "event_data": base_64_audio
-                })
+                loop.run_until_complete(self.send_to_client(base_64_audio))
                 print("Message created, about to send")
                 log("Message created, about to send")
                 self.current_audio = []
-                try:
-                    # if(self.websocket_working("client")):#self.client_websocket is not None and self.client_websocket.sock is not None and self.client_websocket.sock.connected):
-                    self.client_websocket.send(message)    
-                except Exception as e:
-                    print(e)
-                    log(str(e))
+                
                 print("Message sent")
                 log("Message sent")
                 #self.sent_audio = False
@@ -344,9 +321,23 @@ class OpenAITranscriber:
             log("Received event:" + json.dumps(data, indent=2) + '\n')
 
     def on_error(self, ws, error):
-        print("Error:", error)
-        log("Error:" + error)
+        if isinstance(error, Exception):
+            error_msg = str(error)
+        else:
+            error_msg = error
+        print("Error:", error_msg)
+        log("Error:" + error_msg)
     
+    async def send_to_client(self, base_64_audio):
+        message = json.dumps({
+                    "event_type": "audio_response_transmitting",
+                    "event_data": base_64_audio
+                })
+        try:
+            await self.client_websocket.send_json(message)    
+        except Exception as e:
+            print(e)
+            log(str(e))
     # def start_transcription(self):
     #     load_dotenv()
     #     print("env loaded")
@@ -401,9 +392,9 @@ class OpenAITranscriber:
             self.openai_ws.close()
             self.openai_ws = None
             
-        if self.client_websocket:
-            self.client_websocket.close()
-            self.client_websocket = None
+        # if self.client_websocket:
+        #     self.client_websocket.close()
+        #     self.client_websocket = None
             
         if self.audio_thread and self.audio_thread.is_alive():
             self.audio_thread.join(timeout=1.0)    

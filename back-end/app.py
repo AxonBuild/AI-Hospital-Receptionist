@@ -12,6 +12,7 @@ from rag import rag
 import uuid
 import traceback
 from typing import Dict
+import asyncio
 
 def reset_logs():
     file = open("server_logs.txt", "w")
@@ -158,6 +159,8 @@ async def websocket_endpoint(websocket: WebSocket):
         connection_id = str(uuid.uuid4())
         if connection_id not in transcriber_instances:
             transcriber_instances[connection_id] = OpenAITranscriber(websocket)
+            await asyncio.sleep(1)
+            await transcriber_instances[connection_id].test()
             
         try:
             while True:
@@ -173,13 +176,17 @@ async def websocket_endpoint(websocket: WebSocket):
                     #         disconnected_clients.add(client)
                     # connected_clients.difference_update(disconnected_clients)
                     try:
+                        log("Output Data transmitting")
                         await websocket.send_json(data)
+                        log("Output Data transmitted")
                     except Exception as e:
                         logger.error(f"Failed to send to client: {e}")
                         raise  # This will trigger the outer exception handler
                 elif data['event_type'] == 'audio_input_transmitting':
-                    transcriber_instances[connection_id].send_audio_to_openai(data['event_data'])
-                    
+                    log("Transmitting data")
+                    if transcriber_instances[connection_id].is_openai_connected():
+                        transcriber_instances[connection_id].send_audio_to_openai(data['event_data'])
+                    log("Data transmitted")    
         except Exception as e:
             logger.error(f"WebSocket error: {str(e)}")
         finally:
