@@ -13,6 +13,11 @@ import uuid
 import traceback
 from typing import Dict
 
+def reset_logs():
+    file = open("server_logs.txt", "w")
+    file.write("")
+    file.close()
+
 def log(text):
      with open("server_logs.txt", "a") as file:
         if not isinstance(text, str):
@@ -25,9 +30,10 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger("websocket-audio")
+reset_logs()
+
 app = FastAPI()
 transcriber_instances: Dict[str, OpenAITranscriber] = {}
-
 # Enable CORS to allow requests from Next.js frontend
 app.add_middleware(
     CORSMiddleware,
@@ -152,24 +158,25 @@ async def websocket_endpoint(websocket: WebSocket):
         connection_id = str(uuid.uuid4())
         if connection_id not in transcriber_instances:
             transcriber_instances[connection_id] = OpenAITranscriber(websocket)
-        
-        #transcriber = transcriber_instances[connection_id]
-        #transcriber = OpenAITranscriber(websocket)
-        #transcriber.set_client_websocket(websocket)
+            
         try:
             while True:
                 data = await websocket.receive_json()  
                 log(data)
-                
+                #this one is actually response
                 if data['event_type'] == 'audio_response_transmitting':
-                    for client in connected_clients:
-                        try:
-                            await client.send_json(data)
-                        except Exception as e:
-                            logger.warning(e)
-                            disconnected_clients.add(client)
-                    connected_clients.difference_update(disconnected_clients)
-                    
+                    # for client in connected_clients:
+                    #     try:
+                    #         await client.send_json(data)
+                    #     except Exception as e:
+                    #         logger.warning(e)
+                    #         disconnected_clients.add(client)
+                    # connected_clients.difference_update(disconnected_clients)
+                    try:
+                        await websocket.send_json(data)
+                    except Exception as e:
+                        logger.error(f"Failed to send to client: {e}")
+                        raise  # This will trigger the outer exception handler
                 elif data['event_type'] == 'audio_input_transmitting':
                     transcriber_instances[connection_id].send_audio_to_openai(data['event_data'])
                     

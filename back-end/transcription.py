@@ -48,7 +48,7 @@ class OpenAITranscriber:
         self.stream_active = False
         self.audio_thread = None
         self.sent_audio = False
-        self.current_audio = None
+        self.current_audio = []
         self.sent_rag = False
         self._ws_lock = Lock()
         # Initialize logging
@@ -221,24 +221,25 @@ class OpenAITranscriber:
                 self.openai_ws.send(json.dumps(event))
             
         elif(data['type'] == "session.updated" and self.sent_audio == False):    
-            files = [
-            './sound2.wav'
-            ]
-            for filename in files:
-                data, samplerate = sf.read(filename, dtype='float32')  
-                channel_data = data[:, 0] if data.ndim > 1 else data
-                base64_chunk = base64_encode_audio(channel_data)
+            pass
+            # files = [
+            # './sound2.wav'
+            # ]
+            # for filename in files:
+            #     data, samplerate = sf.read(filename, dtype='float32')  
+            #     channel_data = data[:, 0] if data.ndim > 1 else data
+            #     base64_chunk = base64_encode_audio(channel_data)
                 
-                # Send the client event
-                event = {
-                    "type": "input_audio_buffer.append",
-                    "audio": base64_chunk
-                }
+            #     # Send the client event
+            #     event = {
+            #         "type": "input_audio_buffer.append",
+            #         "audio": base64_chunk
+            #     }
             
-                time.sleep(2.5)
-                if(self.websocket_working("openai")):
-                    self.openai_ws.send(json.dumps(event))
-                    self.sent_audio = True
+            #     time.sleep(2.5)
+            #     if(self.websocket_working("openai")):
+            #         self.openai_ws.send(json.dumps(event))
+            #         self.sent_audio = True
 
         # elif(data['type'] == "session.updated" and self.sent_audio == True):
         #     response = requests.get("http://0.0.0.0:8000/get_rag_answer")
@@ -257,6 +258,7 @@ class OpenAITranscriber:
         #     time.sleep(2.5)
         #     if(self.websocket_working("openai")):
         #         self.openai_ws.send(json.dumps(text_message))
+        
         elif(data['type'] == "response.done"):
             try:
                 if(data.get("response", {}).get("metadata", {}).get("topic") == "rag"):
@@ -289,7 +291,6 @@ class OpenAITranscriber:
             "event_id": data["event_id"],
             "type": "response.create"   
             }
-            self.current_audio = []
             time.sleep(2.5)
             if(self.websocket_working("openai")):
                 self.openai_ws.send(json.dumps(message))
@@ -303,8 +304,9 @@ class OpenAITranscriber:
             log(data)
             self.current_audio.append(data['delta'])
             
-        elif(data['type'] == "response.audio.done" and self.sent_audio == True):
+        elif(data['type'] == "response.audio.done"): #and self.sent_audio == True):
             if(len(self.current_audio) >= 0):
+                log("Appropriate length")
                 to_send_audio = reconstruct_audio(self.current_audio)
                 print(to_send_audio)
                 base_64_audio = base64_encode_audio(to_send_audio) #encoding before sending
@@ -314,21 +316,25 @@ class OpenAITranscriber:
                 })
                 print("Message created, about to send")
                 log("Message created, about to send")
-                if(self.websocket_working("client")):#self.client_websocket is not None and self.client_websocket.sock is not None and self.client_websocket.sock.connected):
+                self.current_audio = []
+                try:
+                    # if(self.websocket_working("client")):#self.client_websocket is not None and self.client_websocket.sock is not None and self.client_websocket.sock.connected):
                     self.client_websocket.send(message)    
+                except Exception as e:
+                    print(e)
+                    log(str(e))
                 print("Message sent")
                 log("Message sent")
                 #self.sent_audio = False
             else:
+                log("Insufficient length")
                 return
         elif(data['type'] == "response.audio_transcript.done" and self.sent_audio == False and self.sent_rag == False):
             if(data['transcript']):
                 message = data['transcript']
-                self.transcript_websocket.send(message)
                 log("Sending transcript for rag response")
                 rag2(self.openai_ws, message)
                 log("rag2 ran")
-                print("ragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragragrag")
                 self.sent_rag = True
                 
         elif(data['type'] == "response.done"):

@@ -1,4 +1,3 @@
-// page.js
 "use client"; // This is important to enable client-side functionality
 
 import { useEffect, useRef, useState } from "react";
@@ -21,6 +20,10 @@ export default function Home()
   // Store mediaRecorder and socket in refs so they persist between renders
   const mediaRecorderRef = useRef(null);
   const socketRef = useRef(null);
+  // Add refs for audio processing components
+  const audioContextRef = useRef(null);
+  const sourceNodeRef = useRef(null);
+  const processorRef = useRef(null);
 
   // Custom logger function
   const log = (message) => {
@@ -34,12 +37,16 @@ export default function Home()
     let mic = document.getElementById("mic")
     let micText = document.getElementById("mic-text")
     if (!isRecording) {
-      // socketRef.current = new WebSocket('ws://localhost:8000/ws');
-      // log("Websocket opened");
+      // Initialize WebSocket if it doesn't exist or is closed
+      if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
+        socketRef.current = new WebSocket('ws://localhost:8000/ws');
+        onMessage(); // Set up message handlers
+        log("WebSocket initialized");
+      }
+      
       mic.classList.add("opacity-animation")
       micText.classList.add("opacity-animation")
       startRecording();
-      // onMessage();
     } else {
       mic.classList.remove("opacity-animation")
       micText.classList.remove("opacity-animation")  
@@ -50,79 +57,79 @@ export default function Home()
   const startRecording = () => {
     log("Starting recording process...");
     
-    // Start recording
-    socketRef.current = new WebSocket('ws://localhost:8000/ws');
+    if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
+      log("Establishing WebSocket connection");
+      socketRef.current = new WebSocket('ws://localhost:8000/ws');
+      onMessage();
+    }
     
-    socketRef.current.onopen = () => {
-      log("WebSocket connection established");
-      
-      const mediaStreamConstraints = {
-        audio: true,
-      };
-      
-      log("Requesting microphone access...");
-      navigator.mediaDevices.getUserMedia(mediaStreamConstraints)
-        .then(stream => {
-          log("Microphone access granted");
-          
-          // Create an AudioContext to process the audio
-          const audioContext = new AudioContext({sampleRate: 16000});
-          const source = audioContext.createMediaStreamSource(stream);
-          const processor = audioContext.createScriptProcessor(4096, 1, 1);
-          
-          source.connect(processor);
-          processor.connect(audioContext.destination);
-          
-          log("Audio processing pipeline set up");
-          
-          processor.onaudioprocess = (e) => {
-            if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-              const inputData = e.inputBuffer.getChannelData(0);
-              
-              // Convert Float32Array to 16-bit PCM (similar to Python code)
-              const pcm16 = float32ToInt16(inputData);
-              
-              // Base64 encode the 16-bit PCM data
-              const base64data = btoa(
-                String.fromCharCode.apply(null, new Uint8Array(pcm16.buffer))
-              );
-              
-              log(`Sending audio chunk: ${base64data.length} chars in base64`);
-              socketRef.current.send(JSON.stringify({
-                event_type: "audio_input_transmitting",
-                event_data: base64data
-              }));
-            }
-          };
-          
-          // Create a MediaRecorder just to track state, but we won't use it for data
-          mediaRecorderRef.current = new MediaRecorder(stream);
-          mediaRecorderRef.current.start();
-          
-          //Make sure state is updated properly
-          setIsRecording(true);
-          log("Recording state set to TRUE");
-        })
-        .catch(error => {
-          log(`Error accessing microphone: ${error.message}`);
-          console.error("Error accessing microphone:", error);
-        });
+    const mediaStreamConstraints = {
+      audio: true,
     };
-};
+    
+    log("Requesting microphone access...");
+    navigator.mediaDevices.getUserMedia(mediaStreamConstraints)
+      .then(stream => {
+        log("Microphone access granted");
+        
+        // Create an AudioContext to process the audio
+        audioContextRef.current = new AudioContext({sampleRate: 16000});
+        sourceNodeRef.current = audioContextRef.current.createMediaStreamSource(stream);
+        processorRef.current = audioContextRef.current.createScriptProcessor(4096, 1, 1);
+        
+        sourceNodeRef.current.connect(processorRef.current);
+        processorRef.current.connect(audioContextRef.current.destination);
+        
+        log("Audio processing pipeline set up");
+        
+        processorRef.current.onaudioprocess = (e) => {
+          if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+            const inputData = e.inputBuffer.getChannelData(0);
+            
+            // Convert Float32Array to 16-bit PCM (similar to Python code)
+            const pcm16 = float32ToInt16(inputData);
+            
+            // Base64 encode the 16-bit PCM data
+            const base64data = btoa(
+              String.fromCharCode.apply(null, new Uint8Array(pcm16.buffer))
+            );
+            
+            log(`Sending audio chunk: ${base64data.length} chars in base64`);
+            socketRef.current.send(JSON.stringify({
+              event_type: "audio_input_transmitting",
+              event_data: base64data
+            }));
+          }
+        };
+        
+        // Create a MediaRecorder to track state
+        mediaRecorderRef.current = new MediaRecorder(stream);
+        mediaRecorderRef.current.start();
+        
+        //Make sure state is updated properly
+        setIsRecording(true);
+        log("Recording state set to TRUE");
+      })
+      .catch(error => {
+        log(`Error accessing microphone: ${error.message}`);
+        console.error("Error accessing microphone:", error);
+      });
+  };
 
-// Helper function to convert Float32Array to Int16Array (equivalent to the Python function)
-const float32ToInt16 = (float32Array) => {
-  const int16Array = new Int16Array(float32Array.length);
-  
-  for (let i = 0; i < float32Array.length; i++) {
-    // Clip the value to [-1.0, 1.0] as in Python version
-    const sample = Math.max(-1.0, Math.min(1.0, float32Array[i]));
-    // Convert to 16-bit integer and store in the new array (multiplying by 32767 as in Python)
-    int16Array[i] = Math.floor(sample * 32767);
-  }
-  
-  return int16Array;
-};
+  // Helper function to convert Float32Array to Int16Array (equivalent to the Python function)
+  const float32ToInt16 = (float32Array) => {
+    const int16Array = new Int16Array(float32Array.length);
+    
+    for (let i = 0; i < float32Array.length; i++) {
+      // Clip the value to [-1.0, 1.0] as in Python version
+      const sample = Math.max(-1.0, Math.min(1.0, float32Array[i]));
+      // Convert to 16-bit integer and store in the new array (multiplying by 32767 as in Python)
+      int16Array[i] = Math.floor(sample * 32767);
+    }
+    
+    return int16Array;
+  };
+
   const onMessage = () => {
     socketRef.current.onmessage = event => {
       log(`Received WebSocket message: ${event.data.substring(0, 50)}...`);
@@ -209,10 +216,28 @@ const float32ToInt16 = (float32Array) => {
   };    
 
   const stopRecording = () => {
-    // Stop recording
-    log("Stopping recording...");
+    // Stop recording without closing WebSocket
+    log("Stopping recording but keeping WebSocket open...");
     log("Recording state before stopping: TRUE");
     
+    // Disconnect the audio processing pipeline
+    if (processorRef.current && sourceNodeRef.current) {
+      sourceNodeRef.current.disconnect(processorRef.current);
+      processorRef.current.disconnect();
+      log("Audio processing pipeline disconnected");
+    }
+    
+    // Close AudioContext if needed
+    if (audioContextRef.current) {
+      audioContextRef.current.close().then(() => {
+        log("AudioContext closed");
+      }).catch(err => {
+        log(`Error closing AudioContext: ${err.message}`);
+      });
+      audioContextRef.current = null;
+    }
+    
+    // Stop MediaRecorder and tracks
     if (mediaRecorderRef.current) {
       mediaRecorderRef.current.stop();
       log("MediaRecorder stopped");
@@ -224,23 +249,20 @@ const float32ToInt16 = (float32Array) => {
           log(`Audio track stopped`);
         });
       }
+      
+      // Clear the MediaRecorder
+      mediaRecorderRef.current = null;
     }
     
+    // Notify the server we're stopping audio input (optional)
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
       try {
-        log("Sending stop signal");
+        log("Sending stop audio input notification");
         socketRef.current.send(JSON.stringify({
-          type: "command",
-          command: "stop"
+          event_type: "audio_input_stopped"
         }));
-        
-        // Close the socket after sending the stop command
-        log("Closing WebSocket connection");
-        socketRef.current.close();
-        log("WebSocket connection closed by client");
       } catch (e) {
-        log(`Error during recording stop: ${e.message}`);
-        console.error("Error during recording stop:", e);
+        log(`Error sending stop notification: ${e.message}`);
       }
     }
     
@@ -253,13 +275,34 @@ const float32ToInt16 = (float32Array) => {
   useEffect(() => {
     let h2text = document.querySelector("#instruction")
     h2text.classList.add("bounce-absolute")
+    
     return () => {
-      log("Cleaning up resources on true component unmount");
+      log("Cleaning up resources on component unmount");
       
-      if (socketRef.current) {
-        socketRef.current.close();
+      // Disconnect audio processing if still connected
+      if (processorRef.current && sourceNodeRef.current) {
+        try {
+          sourceNodeRef.current.disconnect(processorRef.current);
+          processorRef.current.disconnect();
+        } catch (e) {
+          log(`Error disconnecting audio: ${e.message}`);
+        }
       }
       
+      // Close AudioContext
+      if (audioContextRef.current) {
+        audioContextRef.current.close().catch(err => {
+          log(`Error closing AudioContext: ${err.message}`);
+        });
+      }
+      
+      // Close WebSocket
+      if (socketRef.current) {
+        socketRef.current.close();
+        log("WebSocket connection closed on unmount");
+      }
+      
+      // Stop MediaRecorder and tracks
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
         
