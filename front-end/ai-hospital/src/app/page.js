@@ -34,85 +34,95 @@ export default function Home()
     let mic = document.getElementById("mic")
     let micText = document.getElementById("mic-text")
     if (!isRecording) {
-      socketRef.current = new WebSocket('ws://localhost:8000/ws');
-      log("Websocket opened");
+      // socketRef.current = new WebSocket('ws://localhost:8000/ws');
+      // log("Websocket opened");
       mic.classList.add("opacity-animation")
       micText.classList.add("opacity-animation")
-      onMessage();
+      startRecording();
+      // onMessage();
     } else {
+      mic.classList.remove("opacity-animation")
+      micText.classList.remove("opacity-animation")  
       stopRecording();
     }
   };
 
-  // const startRecording = () => {
-  //   log("Starting recording process...");
+  const startRecording = () => {
+    log("Starting recording process...");
     
-  //   // Start recording
-  //   socketRef.current = new WebSocket('ws://localhost:8000/ws');
+    // Start recording
+    socketRef.current = new WebSocket('ws://localhost:8000/ws');
     
-  //   socketRef.current.onopen = () => {
-  //     log("WebSocket connection established");
+    socketRef.current.onopen = () => {
+      log("WebSocket connection established");
       
-  //     const mediaStreamConstraints = {
-  //       audio: true,
-  //     };
+      const mediaStreamConstraints = {
+        audio: true,
+      };
       
-  //     log("Requesting microphone access...");
-  //     navigator.mediaDevices.getUserMedia(mediaStreamConstraints)
-  //       .then(stream => {
-  //         log("Microphone access granted");
+      log("Requesting microphone access...");
+      navigator.mediaDevices.getUserMedia(mediaStreamConstraints)
+        .then(stream => {
+          log("Microphone access granted");
           
-  //         // Check if the browser supports the WebM format
-  //         const mimeType = MediaRecorder.isTypeSupported('audio/webm') 
-  //           ? 'audio/webm' 
-  //           : 'audio/mp4';
+          // Create an AudioContext to process the audio
+          const audioContext = new AudioContext({sampleRate: 16000});
+          const source = audioContext.createMediaStreamSource(stream);
+          const processor = audioContext.createScriptProcessor(4096, 1, 1);
           
-  //         log(`Using MIME type: ${mimeType}`);
+          source.connect(processor);
+          processor.connect(audioContext.destination);
           
-  //         mediaRecorderRef.current = new MediaRecorder(stream, {
-  //           mimeType: mimeType,
-  //           audioBitsPerSecond: 16000
-  //         });
+          log("Audio processing pipeline set up");
           
-  //         const interval = 1; // Send audio chunks every 1 second
-  //         mediaRecorderRef.current.start(interval * 1000);
-  //         log(`Started recording, sending chunks every ${interval} second(s)`);
-          
-  //         mediaRecorderRef.current.ondataavailable = event => {
-  //           if (event.data.size > 0) {
-  //             log(`Audio chunk received: ${event.data.size} bytes`);
+          processor.onaudioprocess = (e) => {
+            if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+              const inputData = e.inputBuffer.getChannelData(0);
               
-  //             // For this basic demo, convert the blob to base64 for easier transmission
-  //             const reader = new FileReader();
-  //             reader.onloadend = () => {
-  //               if (reader.readyState === FileReader.DONE && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-  //                 // Send as text since our backend is expecting text
-  //                 const base64data = btoa(
-  //                   new Uint8Array(reader.result)
-  //                     .reduce((data, byte) => data + String.fromCharCode(byte), '')
-  //                 );
-                  
-  //                 log(`Sending audio chunk: ${base64data.length} chars in base64`);
-  //                 socketRef.current.send(JSON.stringify({
-  //                   event_type: "audio_input_transmitting",
-  //                   event_data: base64data
-  //                 }));
-  //               }
-  //             };
-  //             reader.readAsArrayBuffer(event.data);
-  //           }
-  //         };
+              // Convert Float32Array to 16-bit PCM (similar to Python code)
+              const pcm16 = float32ToInt16(inputData);
+              
+              // Base64 encode the 16-bit PCM data
+              const base64data = btoa(
+                String.fromCharCode.apply(null, new Uint8Array(pcm16.buffer))
+              );
+              
+              log(`Sending audio chunk: ${base64data.length} chars in base64`);
+              socketRef.current.send(JSON.stringify({
+                event_type: "audio_input_transmitting",
+                event_data: base64data
+              }));
+            }
+          };
           
-  //         //Make sure state is updated properly
-  //         setIsRecording(true);
-  //         log("Recording state set to TRUE");
-  //       })
-  //       .catch(error => {
-  //         log(`Error accessing microphone: ${error.message}`);
-  //         console.error("Error accessing microphone:", error);
-  //       });
-  //   };
+          // Create a MediaRecorder just to track state, but we won't use it for data
+          mediaRecorderRef.current = new MediaRecorder(stream);
+          mediaRecorderRef.current.start();
+          
+          //Make sure state is updated properly
+          setIsRecording(true);
+          log("Recording state set to TRUE");
+        })
+        .catch(error => {
+          log(`Error accessing microphone: ${error.message}`);
+          console.error("Error accessing microphone:", error);
+        });
+    };
+};
 
+// Helper function to convert Float32Array to Int16Array (equivalent to the Python function)
+const float32ToInt16 = (float32Array) => {
+  const int16Array = new Int16Array(float32Array.length);
+  
+  for (let i = 0; i < float32Array.length; i++) {
+    // Clip the value to [-1.0, 1.0] as in Python version
+    const sample = Math.max(-1.0, Math.min(1.0, float32Array[i]));
+    // Convert to 16-bit integer and store in the new array (multiplying by 32767 as in Python)
+    int16Array[i] = Math.floor(sample * 32767);
+  }
+  
+  return int16Array;
+};
   const onMessage = () => {
     socketRef.current.onmessage = event => {
       log(`Received WebSocket message: ${event.data.substring(0, 50)}...`);
@@ -227,8 +237,6 @@ export default function Home()
         // Close the socket after sending the stop command
         log("Closing WebSocket connection");
         socketRef.current.close();
-        mic.classList.remove("opacity-animation")
-        micText.classList.remove("opacity-animation")
         log("WebSocket connection closed by client");
       } catch (e) {
         log(`Error during recording stop: ${e.message}`);
@@ -267,7 +275,7 @@ export default function Home()
   return (
     <div>
       <div id="centered-text">
-        <h1>Hospital Virtual Receptionist</h1>
+        <h1>Greenview Virtual Receptionist</h1>
       </div>
       <h2 id = "instruction" className = "absoluteUppies">Hello visitor! How can I help you?</h2>
       <div id="speak-button">
