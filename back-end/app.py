@@ -52,9 +52,9 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.accept()
         logger.info("WebSocket connection accepted")
         connected_clients.add(websocket)
+        print(connected_clients)
+        log(f"Connected clients: {len(connected_clients)}")
         connection_id = str(uuid.uuid4())
-        websocket.connection_id = connection_id
-        #transcriber = OpenAITranscriber()
         try:
             while True:
                 # Receive data from client
@@ -72,9 +72,9 @@ async def websocket_endpoint(websocket: WebSocket):
                             disconnected_clients.add(client)
                     # Remove any clients that failed
                     connected_clients.difference_update(disconnected_clients)
-                # elif(data['event_type'] == 'audio_input_transmitting'):
-                #     event_data = data['event_data']
-                    #transcriber.send_audio_to_openai(event_data)
+                elif(data['event_type'] == 'audio_input_transmitting'):
+                    event_data = data['event_data']
+                    transcriber.send_audio_to_openai(event_data)
                 # try:
                 #     # Parse the JSON data
                 #     json_data = json.loads(data)
