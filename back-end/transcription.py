@@ -42,15 +42,18 @@ def log(text):
         except:
             print(f"Error logging {text}")
 class OpenAITranscriber:
+    openai_ws = None
+    _ws_lock = Lock()
+    openai_thread = None
     def __init__(self, client_websocket):
         self.client_websocket = client_websocket
-        self.openai_ws = None
+        
         self.stream_active = False
-        self.audio_thread = None
+        
         self.sent_audio = False
         self.current_audio = []
         self.sent_rag = False
-        self._ws_lock = Lock()
+        
         # Initialize logging
         file = open("logs.txt", "w")
         file.write("")
@@ -167,9 +170,9 @@ class OpenAITranscriber:
                 print("Audio streaming stopped")
                 log("Audio streaming stopped")
                 
-        self.audio_thread = threading.Thread(target=audio_stream_thread)
-        self.audio_thread.daemon = True
-        self.audio_thread.start()
+        # self.audio_thread = threading.Thread(target=audio_stream_thread)
+        # self.audio_thread.daemon = True
+        # self.audio_thread.start()
     
     def websocket_working(self, socket_name):
         if(socket_name == "client"):
@@ -199,7 +202,7 @@ class OpenAITranscriber:
             event = {
                 "type": "session.update",
                 "session": {
-                    "instructions": "Your job is to transcribe what I say, that and only that."
+                    "instructions": "Your job is to transcribe what I say and return a transcription mirroring exactly what I said."
                 }
             }
             if(self.websocket_working("openai")):
@@ -397,8 +400,8 @@ class OpenAITranscriber:
         #     self.client_websocket.close()
         #     self.client_websocket = None
             
-        if self.audio_thread and self.audio_thread.is_alive():
-            self.audio_thread.join(timeout=1.0)    
+        # if self.audio_thread and self.audio_thread.is_alive():
+        #     self.audio_thread.join(timeout=1.0)    
         return True
     
     def get_voice_output(self, text):
