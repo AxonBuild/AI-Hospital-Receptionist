@@ -8,3 +8,7 @@ flow.txt
 .env
 output.wav
 error.json
+logs.txt
+*.pyc
+package.json
+package-lock.json

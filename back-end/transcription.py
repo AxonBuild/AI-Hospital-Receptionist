@@ -36,10 +36,14 @@ def base64_encode_audio(float32_array):
 def log(text):
     with open("logs.txt", "a") as file:
         try:
+            if isinstance(text, dict):
+                text = json.dumps(text, indent=2)
             if not isinstance(text, str):
                 text = str(text)
+            print("Logging:", text)
             file.write(text + '\n')
-        except:
+        except Exception as e:
+            print("Exception", e)
             print(f"Error logging {text}")
 class OpenAITranscriber:
     openai_ws = None
@@ -207,8 +211,11 @@ class OpenAITranscriber:
             event = {
                 "type": "session.update",
                 "session": {
-                            "instructions": "Your job is to transcribe what I say and return a transcription mirroring exactly what I said. Do not answer the question. Do not add any extra information. Just transcribe what the audio is narrating.",
-                            "input_audio_transcription": {"model": "whisper-1"}
+                    "instructions": "Your job is to transcribe what I say and return a transcription mirroring exactly what I said. Do not answer the question. Do not add any extra information. Just transcribe what the audio is narrating.",
+                    "input_audio_transcription": {
+                        "model": "whisper-1",
+                        "language": "en"
+                    }
                 }
             }
             if(self.websocket_working("openai")):

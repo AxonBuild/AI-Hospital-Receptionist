@@ -26,6 +26,8 @@ def reset_logs():
 
 def log(text):
      with open("server_logs.txt", "a") as file:
+        if isinstance(text, dict):
+            text = json.dumps(text, index=2)
         if not isinstance(text, str):
             text = str(text)
         file.write(text + '\n')
@@ -82,7 +84,7 @@ async def websocket_endpoint(websocket: WebSocket):
         try:
             while True:
                 data = await websocket.receive_json()  
-                log(data)
+                # log(data)
                 #this one is actually response
                 if data['event_type'] == 'audio_response_transmitting':
                     try:
