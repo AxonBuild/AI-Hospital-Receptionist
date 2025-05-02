@@ -14,6 +14,11 @@ import traceback
 from typing import Dict
 import asyncio
 
+def resetb64():
+    file = open("b64audio.txt", "w")
+    file.write("")
+    file.close()
+    
 def reset_logs():
     file = open("server_logs.txt", "w")
     file.write("")
@@ -24,7 +29,13 @@ def log(text):
         if not isinstance(text, str):
             text = str(text)
         file.write(text + '\n')
-    
+
+def record_audio(text):
+    with open("b64audio.txt", "a") as file:
+        if not isinstance(text, str):
+            text = str(text)
+        file.write(text + '\n')
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -85,6 +96,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     log("Transmitting data")
                     if transcriber_instances[connection_id].is_openai_connected():
                         transcriber_instances[connection_id].send_audio_to_openai(data['event_data'])
+                        record_audio(data['event_data'])
                     log("Data transmitted")    
         except Exception as e:
             logger.error(f"WebSocket error: {str(e)}")
