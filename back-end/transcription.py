@@ -204,14 +204,15 @@ class OpenAITranscriber:
             asyncio.set_event_loop(loop)
         if(data['type'] == "session.created"):
             pass
-            # event = {
-            #     "type": "session.update",
-            #     "session": {
-            #                 "instructions": "Your job is to transcribe what I say and return a transcription mirroring exactly what I said. Do not answer the question. Do not add any extra information. Just transcribe what the audio is narrating."
-            #     }
-            # }
-            # if(self.websocket_working("openai")):
-            #     self.openai_ws.send(json.dumps(event))
+            event = {
+                "type": "session.update",
+                "session": {
+                            "instructions": "Your job is to transcribe what I say and return a transcription mirroring exactly what I said. Do not answer the question. Do not add any extra information. Just transcribe what the audio is narrating.",
+                            "input_audio_transcription": {"model": "whisper-1"}
+                }
+            }
+            if(self.websocket_working("openai")):
+                self.openai_ws.send(json.dumps(event))
             
         elif(data['type'] == "session.updated" and self.sent_audio == False):    
             pass
