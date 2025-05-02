@@ -300,12 +300,23 @@ class OpenAITranscriber:
                 log("Error parsing json rag response")
         elif(data['type'] == "conversation.item.created"):
             message = {
-            "event_id": data["event_id"],
-            "type": "response.create"   
+                "event_id": data["event_id"],
+                "type": "response.create"   
             }
             time.sleep(2.5)
             # if(self.websocket_working("openai")):
             #     self.openai_ws.send(json.dumps(message))
+        elif data['type'] == "conversation.item.input_audio_transcription.completed":
+            message = {
+                "type": "response.create",
+                "response": {
+                    # "conversation": "none",
+                    "modalities": [ "text" ],
+                    "instructions": "Your job is to make a joke out of what i say.",
+                }
+            }
+            if(self.websocket_working("openai")):
+                self.openai_ws.send(json.dumps(message))
                 
         elif(data['type'] == "response.text.delta"):
             print(data)
