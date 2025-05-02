@@ -137,6 +137,7 @@ class OpenAITranscriber:
         self.send_audio_to_openai(amplified_chunk)
     
     def send_audio_to_openai(self, base64_audio):
+        log("\n>> Sending audio to openai\n\n")
         with self._ws_lock:
             try:
                 if not self.is_openai_connected():
@@ -189,9 +190,10 @@ class OpenAITranscriber:
             return self.openai_ws is not None and self.openai_ws.sock is not None and self.openai_ws.sock.connected
         
     def on_openai_message(self, ws, message):
+        data = json.loads(message)
+        
         print("Raw message received from OpenAI")
         log("Raw message received from OpenAI")
-        data = json.loads(message)
         # # Forward the message to the client
         # if self.client_websocket:
         #     try:
@@ -211,11 +213,19 @@ class OpenAITranscriber:
             event = {
                 "type": "session.update",
                 "session": {
-                    "instructions": "Your job is to transcribe what I say and return a transcription mirroring exactly what I said. Do not answer the question. Do not add any extra information. Just transcribe what the audio is narrating.",
+                    "instructions": "Your job is to make a joke out of what i say.",
                     "input_audio_transcription": {
                         "model": "whisper-1",
                         "language": "en"
-                    }
+                    },
+                    "turn_detection": {
+                        "type": "server_vad",
+                        "threshold": 0.8,
+                        "prefix_padding_ms": 300,
+                        "silence_duration_ms": 500,
+                        "create_response": False
+                    },
+                    "voice": "ash"
                 }
             }
             if(self.websocket_working("openai")):
@@ -279,9 +289,10 @@ class OpenAITranscriber:
                     }
                     }
                     time.sleep(2.5)
-                    if(self.websocket_working("openai")):
-                        self.openai_ws.send(json.dumps(text_message))
-                        self.sent_audio = True
+                    log("HEREEEEE")
+                    # if(self.websocket_working("openai")):
+                    #     self.openai_ws.send(json.dumps(text_message))
+                    #     self.sent_audio = True
             except:
                 print("Error parsing json rag response")
                 print(data)
@@ -293,8 +304,8 @@ class OpenAITranscriber:
             "type": "response.create"   
             }
             time.sleep(2.5)
-            if(self.websocket_working("openai")):
-                self.openai_ws.send(json.dumps(message))
+            # if(self.websocket_working("openai")):
+            #     self.openai_ws.send(json.dumps(message))
                 
         elif(data['type'] == "response.text.delta"):
             print(data)
