@@ -139,8 +139,28 @@ export default function Home()
       micText.classList.remove("opacity-animation")
       try {
         // Try to parse as JSON
-        const data = JSON.parse(event.data);
-        log(JSON.stringify(data).slice(0, 20))
+        let data;
+      try {
+        data = JSON.parse(event.data);
+      } catch (parseError) {
+        log(`Failed to parse JSON: ${parseError.message}`);
+        log(`Problematic JSON: ${event.data}`);
+        return;
+      }
+      
+      // Debug log the parsed data
+      log(`Parsed data: ${JSON.stringify(data, null, 2)}`);
+      
+      // Verify the data structure
+      if (!data || typeof data !== 'object') {
+        log('Invalid data format - not an object');
+        return;
+      }
+      
+      if (!data.event_type) {
+        log('Missing event_type in message');
+        return;
+      }
         // Handle different message types
         if (data.event_type == "audio_response_transmitting") {
           log("Received audio response, attempting to play...");

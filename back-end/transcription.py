@@ -60,11 +60,12 @@ class OpenAITranscriber:
         self.initialize_websockets()
     
     async def test(self):
-        message = json.dumps({
-            "event_type": "connection_established",
-            "event_data": "ready"
-        })
+        message = {
+            "event_type": "checking connectivity",
+            "event_data": "connection established"
+        }
         await self.client_websocket.send_json(message)
+    
     def is_openai_connected(self):
         return (self.openai_ws and hasattr(self.openai_ws, 'sock') 
             and self.openai_ws.sock and self.openai_ws.sock.connected)
@@ -198,7 +199,7 @@ class OpenAITranscriber:
             event = {
                 "type": "session.update",
                 "session": {
-                    "instructions": "If you are given base64 encoded audio, you are a tool for transcription only, otherwise you are a helpful assistant for Greenview Medical Centre"
+                    "instructions": "Your job is to transcribe what I say, that and only that."
                 }
             }
             if(self.websocket_working("openai")):
@@ -243,7 +244,7 @@ class OpenAITranscriber:
         #     if(self.websocket_working("openai")):
         #         self.openai_ws.send(json.dumps(text_message))
         
-        elif(data['type'] == "response.done"):
+        elif(data['type'] == "response.done" and self.sent_rag == True):
             try:
                 if(data.get("response", {}).get("metadata", {}).get("topic") == "rag"):
                     print("Rag found: ", data)
@@ -283,13 +284,13 @@ class OpenAITranscriber:
             print(data)
             log(data)
             
-        elif(data['type'] == "response.audio.delta"):
+        elif(data['type'] == "response.audio.delta" and self.sent_rag == True):
             print(data)
             log(data)
             self.current_audio.append(data['delta'])
             log("Data added into array")
             
-        elif(data['type'] == "response.audio.done"): #and self.sent_audio == True):
+        elif(data['type'] == "response.audio.done" and self.sent_rag == True): #and self.sent_audio == True):
             if(len(self.current_audio) >= 0):
                 log("Appropriate length")
                 to_send_audio = reconstruct_audio(self.current_audio)
@@ -306,7 +307,7 @@ class OpenAITranscriber:
             else:
                 log("Insufficient length")
                 return
-        elif(data['type'] == "response.audio_transcript.done" and self.sent_audio == False and self.sent_rag == False):
+        elif(data['type'] == "response.audio_transcript.done" and self.sent_rag == False):
             if(data['transcript']):
                 message = data['transcript']
                 log("Sending transcript for rag response")
@@ -329,10 +330,10 @@ class OpenAITranscriber:
         log("Error:" + error_msg)
     
     async def send_to_client(self, base_64_audio):
-        message = json.dumps({
+        message = {
                     "event_type": "audio_response_transmitting",
                     "event_data": base_64_audio
-                })
+                }
         try:
             await self.client_websocket.send_json(message)    
         except Exception as e:
