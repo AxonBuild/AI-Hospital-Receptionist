@@ -57,7 +57,6 @@ class OpenAITranscriber:
         self.sent_rag = False
         self._sent_rag_lock = Lock()
         self.item_ids = []
-
         self.processed_message_ids = set()
         self.processed_transcripts = set()
         self.processed_audio_responses = set()
@@ -304,17 +303,9 @@ class OpenAITranscriber:
             self.openai_ws.close()
             self.openai_ws = None
             
-        # if self.client_websocket:
-        #     self.client_websocket.close()
-        #     self.client_websocket = None
-            
-        # if self.audio_thread and self.audio_thread.is_alive():
-        #     self.audio_thread.join(timeout=1.0)    
         return True
     
     def get_voice_output(self, text):
-        # This function appears to be intended for requesting voice output
-        # It currently just sends a session update event without using the text parameter
         event = {
             "type": "session.update"
         } 
