@@ -2576,3 +2576,4 @@ Raw message received from OpenAI
 >> Sending audio to openai
 
 
+OpenAI WebSocket closed: None - None
