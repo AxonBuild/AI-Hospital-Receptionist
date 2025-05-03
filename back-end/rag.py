@@ -64,7 +64,7 @@ def rag2(ws, question, chroma_path = CHROMA_PATH, collection_name = "hospital_db
             "metadata": { "topic": "rag" },
 
             # Set any other available response fields
-            "modalities": [ "text" ],
+            "modalities": [ "text", "audio"],
             "instructions": system_prompt,
         },
     }

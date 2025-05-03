@@ -56,7 +56,7 @@ class OpenAITranscriber:
         self.current_audio = []
         self.sent_rag = False
         self._sent_rag_lock = Lock()
-        
+        self.item_ids = []
 
         self.processed_message_ids = set()
         self.processed_transcripts = set()
@@ -213,7 +213,7 @@ class OpenAITranscriber:
             event = {
                 "type": "session.update",
                 "session": {
-                    "instructions": "Your job is to make a joke out of what i say.",
+                    "instructions": "Your job is to transcript audio you're given, and create speech of text you're given.",
                     "input_audio_transcription": {
                         "model": "whisper-1",
                         "language": "en"
@@ -231,104 +231,23 @@ class OpenAITranscriber:
             if(self.websocket_working("openai")):
                 self.openai_ws.send(json.dumps(event))
             
-        elif(data['type'] == "session.updated" and self.sent_audio == False):    
-            pass
-            # files = [
-            # './sound2.wav'
-            # ]
-            # for filename in files:
-            #     data, samplerate = sf.read(filename, dtype='float32')  
-            #     channel_data = data[:, 0] if data.ndim > 1 else data
-            #     base64_chunk = base64_encode_audio(channel_data)
-                
-            #     # Send the client event
-            #     event = {
-            #         "type": "input_audio_buffer.append",
-            #         "audio": base64_chunk
-            #     }
+        elif(data['type'] == "conversation.item.input_audio_transcription.completed"):
+            transcript = data['transcript']
+            item_id = data['item_id']
+            rag2(self.openai_ws, transcript)
             
-            #     time.sleep(2.5)
-            #     if(self.websocket_working("openai")):
-            #         self.openai_ws.send(json.dumps(event))
-            #         self.sent_audio = True
-
-        # elif(data['type'] == "session.updated" and self.sent_audio == True):
-        #     response = requests.get("http://0.0.0.0:8000/get_rag_answer")
-        #     if(response.status_code == 200):
-        #         text = response.text
-        #     event_id = data['event_id']
-        #     text_message = {
-        #     "event_id": event_id,
-        #     "type": "conversation.item.create",
-        #     "item": {
-        #     "type": "message",
-        #     "role": "user",
-        #     "content": [{"type": "input_text", "text": text}]
-        #     }
-        #     }
-        #     time.sleep(2.5)
-        #     if(self.websocket_working("openai")):
-        #         self.openai_ws.send(json.dumps(text_message))
-        
-        elif(data['type'] == "response.done" and self.sent_rag == True):
-            try:
-                if(data.get("response", {}).get("metadata", {}).get("topic") == "rag"):
-                    print("Rag found: ", data)
-                    log("Rag found: " + json.dumps(data))
-                    rag_response = data['response']['output'][0]['content'][0]['text']
-                    print("Rag response: ", rag_response)
-                    log("Rag response: " + str(rag_response))
-                    event_id = data['event_id']
-                    text_message = {
-                    "event_id": event_id,
-                    "type": "conversation.item.create",
-                    "item": {
-                    "type": "message",
-                    "role": "user",
-                    "content": [{"type": "input_text", "text": rag_response}]
-                    }
-                    }
-                    time.sleep(2.5)
-                    log("HEREEEEE")
-                    # if(self.websocket_working("openai")):
-                    #     self.openai_ws.send(json.dumps(text_message))
-                    #     self.sent_audio = True
-            except:
-                print("Error parsing json rag response")
-                print(data)
-                log(data)
-                log("Error parsing json rag response")
-        elif(data['type'] == "conversation.item.created"):
-            message = {
-                "event_id": data["event_id"],
-                "type": "response.create"   
-            }
-            time.sleep(2.5)
-            # if(self.websocket_working("openai")):
-            #     self.openai_ws.send(json.dumps(message))
-        elif data['type'] == "conversation.item.input_audio_transcription.completed":
-            message = {
-                "type": "response.create",
-                "response": {
-                    # "conversation": "none",
-                    "modalities": [ "text" ],
-                    "instructions": "Your job is to make a joke out of what i say.",
-                }
-            }
-            if(self.websocket_working("openai")):
-                self.openai_ws.send(json.dumps(message))
-                
+            
         elif(data['type'] == "response.text.delta"):
             print(data)
             log(data)
             
-        elif(data['type'] == "response.audio.delta" and self.sent_rag == True):
+        elif(data['type'] == "response.audio.delta"):
             print(data)
             log(data)
             self.current_audio.append(data['delta'])
             log("Data added into array")
             
-        elif(data['type'] == "response.audio.done" and self.sent_rag == True): #and self.sent_audio == True):
+        elif(data['type'] == "response.audio.done"): #and self.sent_audio == True):
             if(len(self.current_audio) >= 0):
                 log("Appropriate length")
                 to_send_audio = reconstruct_audio(self.current_audio)
@@ -345,17 +264,15 @@ class OpenAITranscriber:
             else:
                 log("Insufficient length")
                 return
-        elif(data['type'] == "response.audio_transcript.done"):
-             with self._sent_rag_lock:
-                if not self.sent_rag and data.get('transcript'):
-                    self.sent_rag = True  # Set it here first to prevent race condition
-                    message = data['transcript']
-                    log("Sending transcript for rag response")
-                    rag2(self.openai_ws, message)
-                    log("rag2 ran")
                 
         elif(data['type'] == "response.done"):
-            return
+            try:
+                if(data['metadata']['topic'] == "rag"):
+                    rag_response = data['response']['output']['content']['text']
+                    item_id = data['response']['output']['id']
+                    log(item_id)
+            except:
+                pass
         else:
             print("Received event:", json.dumps(data, indent=2) + '\n')
             log("Received event:" + json.dumps(data, indent=2) + '\n')
@@ -379,52 +296,6 @@ class OpenAITranscriber:
         except Exception as e:
             print(e)
             log(str(e))
-    # def start_transcription(self):
-    #     load_dotenv()
-    #     print("env loaded")
-    #     log("env loaded")
-    #     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-    #     url = "wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview"
-    #     client_url = "ws://localhost:8000/ws"
-        
-    #     headers = [
-    #         "Authorization: Bearer " + OPENAI_API_KEY,
-    #         "OpenAI-Beta: realtime=v1"
-    #     ]
-    #     print("First websocket loaded")
-    #     log("First websocket loaded")
-    #     self.openai_ws = websocket.WebSocketApp(
-    #         url,
-    #         header=headers,
-    #         on_open=lambda ws: self.on_openai_open(),
-    #         on_message=lambda ws, msg: self.on_openai_message(msg),
-    #         on_error=lambda ws, error: self.on_error(error)
-    #     )
-    #     print("Second websocket loaded")
-    #     log("Second websocket loaded")
-    #     self.client_websocket = websocket.WebSocketApp(
-    #         url=client_url,
-    #         on_open=lambda ws: print("Connected to client endpoint"),
-    #         on_message=lambda ws, msg: print(f"Message from client: {msg}"),
-    #         on_error=lambda ws, error: self.on_error(error),
-    #         on_close=lambda ws, close_status_code, close_msg: print("Client connection closed")
-    #     )
-    #     # Run the WebSocket in a separate thread
-    #     self.thread_ws = threading.Thread(target=self.openai_ws.run_forever)
-    #     self.client_thread = threading.Thread(target=self.client_websocket.run_forever)
-    #     self.thread_ws.daemon = True
-    #     self.client_thread.daemon = True
-    #     try:
-    #         print("Before threads start")
-    #         log("Before threads start")
-    #         self.thread_ws.start()
-    #         self.client_thread.start()
-    #         print("After threads start")
-    #         log("After threads start")
-    #     except Exception as e:
-    #         print(e)
-    #         log(e) 
-        
         
     def stop_transcription(self):
         self.stream_active = False
