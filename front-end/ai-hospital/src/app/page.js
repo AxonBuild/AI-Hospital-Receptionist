@@ -205,58 +205,259 @@ export default function Home() {
     return buf;
   };
 
+  // const playNextAudio = () => {
+  //   if (audioQueueRef.current.length === 0) {
+  //     isPlayingRef.current = false;
+  //     return;
+  //   }
+
+  //   const base64Data = audioQueueRef.current.shift();
+  //   isPlayingRef.current = true;
+
+  //   // Convert base64 to array buffer
+  //   const binaryString = atob(base64Data);
+  //   const bytes = new Uint8Array(binaryString.length);
+    
+  //   for (let i = 0; i < binaryString.length; i++) {
+  //     bytes[i] = binaryString.charCodeAt(i);
+  //   }
+    
+  //   // Create audio context
+  //   const audioContext = new (window.AudioContext || window.webkitAudioContext)({
+  //     sampleRate: 16000 // Match your audio sample rate
+  //   });
+    
+  //   // Create audio buffer from PCM data
+  //   const audioBuffer = audioContext.createBuffer(1, bytes.length / 2, audioContext.sampleRate);
+  //   const channelData = audioBuffer.getChannelData(0);
+    
+  //   // Convert 16-bit PCM to float32
+  //   for (let i = 0; i < channelData.length; i++) {
+  //     // Get 16-bit sample (2 bytes per sample)
+  //     const sample = (bytes[i * 2] | (bytes[i * 2 + 1] << 8));
+  //     // Convert to signed value
+  //     const signedSample = sample >= 0x8000 ? sample - 0x10000 : sample;
+  //     // Convert to float in range [-1, 1]
+  //     channelData[i] = signedSample / 32768.0;
+  //   }
+    
+  //   // Play audio
+  //   const source = audioContext.createBufferSource();
+  //   source.buffer = audioBuffer;
+  //   source.connect(audioContext.destination);
+    
+  //   // When audio finishes playing, play the next one in queue
+  //   source.onended = () => {
+  //     log("Audio playback finished");
+  //     playNextAudio();
+  //   };
+    
+  //   source.start(0);
+  //   log("Audio playback started");
+  // };
+  // const playNextAudio = () => {
+  //   if (audioQueueRef.current.length === 0) {
+  //     isPlayingRef.current = false;
+  //     return;
+  //   }
+  
+  //   const base64Data = audioQueueRef.current.shift();
+  //   isPlayingRef.current = true;
+  
+  //   // Convert base64 to array buffer
+  //   const binaryString = atob(base64Data);
+  //   const bytes = new Uint8Array(binaryString.length);
+    
+  //   for (let i = 0; i < binaryString.length; i++) {
+  //     bytes[i] = binaryString.charCodeAt(i);
+  //   }
+    
+  //   // Create audio context with the correct sample rate (16000)
+  //   const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
+  //   // Decode the audio data
+  //   audioContext.decodeAudioData(
+  //     bytes.buffer,
+  //     (audioBuffer) => {
+  //       // Play audio
+  //       const source = audioContext.createBufferSource();
+  //       source.buffer = audioBuffer;
+  //       source.connect(audioContext.destination);
+        
+  //       // When audio finishes playing, play the next one in queue
+  //       source.onended = () => {
+  //         log("Audio playback finished");
+  //         playNextAudio();
+  //       };
+        
+  //       source.start(0);
+  //       log("Audio playback started");
+  //     },
+  //     (err) => {
+  //       // If decodeAudioData fails, fall back to manual conversion
+  //       log(`Audio decoding failed: ${err}. Using fallback method.`);
+        
+  //       // Create audio buffer from PCM data
+  //       const audioBuffer = audioContext.createBuffer(1, bytes.length / 2, 16000);
+  //       const channelData = audioBuffer.getChannelData(0);
+        
+  //       // Convert 16-bit PCM to float32
+  //       for (let i = 0; i < channelData.length; i++) {
+  //         // Get 16-bit sample (2 bytes per sample)
+  //         const sample = (bytes[i * 2] | (bytes[i * 2 + 1] << 8));
+  //         // Convert to signed value
+  //         const signedSample = sample >= 0x8000 ? sample - 0x10000 : sample;
+  //         // Convert to float in range [-1, 1]
+  //         channelData[i] = signedSample / 32768.0;
+  //       }
+        
+  //       // Play audio
+  //       const source = audioContext.createBufferSource();
+  //       source.buffer = audioBuffer;
+  //       source.connect(audioContext.destination);
+        
+  //       source.onended = () => {
+  //         log("Audio playback finished");
+  //         playNextAudio();
+  //       };
+        
+  //       source.start(0);
+  //       log("Audio playback started (fallback method)");
+  //     }
+  //   );
+  // };
   const playNextAudio = () => {
     if (audioQueueRef.current.length === 0) {
       isPlayingRef.current = false;
       return;
     }
-
+  
     const base64Data = audioQueueRef.current.shift();
     isPlayingRef.current = true;
-
-    // Convert base64 to array buffer
-    const binaryString = atob(base64Data);
-    const bytes = new Uint8Array(binaryString.length);
-    
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
+  
+    try {
+      // Convert base64 to array buffer
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+  
+      // Check if we have valid data
+      if (bytes.length < 2) {
+        log("Received invalid audio data (too short). Skipping...");
+        isPlayingRef.current = false;
+        playNextAudio(); // Try the next chunk
+        return;
+      }
+      
+      // Create audio context with explicit sample rate matching the server
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)({
+        sampleRate: 16000 // CRITICAL: Match the sample rate from the server
+      });
+      
+      // Create a WAV header for the PCM data
+      const wav = createWavFromPCM(bytes);
+      
+      // Use the built-in decoder
+      audioContext.decodeAudioData(
+        wav.buffer,
+        (audioBuffer) => {
+          // Create a source node
+          const source = audioContext.createBufferSource();
+          source.buffer = audioBuffer;
+          
+          // IMPORTANT: Set the playback rate to ensure correct speed
+          source.playbackRate.value = 1.5;
+          
+          // Connect to destination and play
+          source.connect(audioContext.destination);
+          
+          source.onended = () => {
+            log("Audio playback finished");
+            playNextAudio();
+          };
+          
+          source.start(0);
+          log("Audio playback started successfully");
+        },
+        (err) => {
+          log(`Audio decoding failed: ${err}. Skipping this chunk.`);
+          isPlayingRef.current = false;
+          playNextAudio(); // Try the next chunk
+        }
+      );
+    } catch (error) {
+      log(`Error processing audio: ${error.message}`);
+      isPlayingRef.current = false;
+      playNextAudio(); // Try the next chunk
     }
+  };
+  
+  // Improved WAV creation function with correct sample rate
+  const createWavFromPCM = (pcmData) => {
+    const numChannels = 1;
+    const sampleRate = 16000; // MUST match the sample rate from the server
+    const bitsPerSample = 16;
     
-    // Create audio context
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)({
-      sampleRate: 16000 // Match your audio sample rate
-    });
+    // Calculate sizes
+    const dataSize = pcmData.length;
+    const wavSize = 44 + dataSize;
     
-    // Create audio buffer from PCM data
-    const audioBuffer = audioContext.createBuffer(1, bytes.length / 2, audioContext.sampleRate);
-    const channelData = audioBuffer.getChannelData(0);
+    // Create a buffer for the WAV file
+    const wav = new Uint8Array(wavSize);
     
-    // Convert 16-bit PCM to float32
-    for (let i = 0; i < channelData.length; i++) {
-      // Get 16-bit sample (2 bytes per sample)
-      const sample = (bytes[i * 2] | (bytes[i * 2 + 1] << 8));
-      // Convert to signed value
-      const signedSample = sample >= 0x8000 ? sample - 0x10000 : sample;
-      // Convert to float in range [-1, 1]
-      channelData[i] = signedSample / 32768.0;
-    }
-    
-    // Play audio
-    const source = audioContext.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(audioContext.destination);
-    
-    // When audio finishes playing, play the next one in queue
-    source.onended = () => {
-      log("Audio playback finished");
-      playNextAudio();
+    // WAV header (44 bytes)
+    const setString = (offset, string) => {
+      for (let i = 0; i < string.length; i++) {
+        wav[offset + i] = string.charCodeAt(i);
+      }
     };
     
-    source.start(0);
-    log("Audio playback started");
+    const setUint32 = (offset, value) => {
+      wav[offset] = value & 0xff;
+      wav[offset + 1] = (value >> 8) & 0xff;
+      wav[offset + 2] = (value >> 16) & 0xff;
+      wav[offset + 3] = (value >> 24) & 0xff;
+    };
+    
+    const setUint16 = (offset, value) => {
+      wav[offset] = value & 0xff;
+      wav[offset + 1] = (value >> 8) & 0xff;
+    };
+    
+    // RIFF chunk descriptor
+    setString(0, 'RIFF');
+    setUint32(4, 36 + dataSize);
+    setString(8, 'WAVE');
+    
+    // fmt sub-chunk
+    setString(12, 'fmt ');
+    setUint32(16, 16); // Subchunk1Size (16 for PCM)
+    setUint16(20, 1); // AudioFormat (1 for PCM)
+    setUint16(22, numChannels);
+    setUint32(24, sampleRate); // CRITICAL: Correct sample rate
+    setUint32(28, sampleRate * numChannels * bitsPerSample / 8); // ByteRate
+    setUint16(32, numChannels * bitsPerSample / 8); // BlockAlign
+    setUint16(34, bitsPerSample);
+    
+    // data sub-chunk
+    setString(36, 'data');
+    setUint32(40, dataSize);
+    
+    // Copy the PCM data
+    wav.set(pcmData, 44);
+    
+    return wav;
   };
-
+  
   const handleAudioResponse = (data) => {
+    if (!data || data.length === 0) {
+      log("Received empty audio data. Ignoring...");
+      return;
+    }
+    
     // Add the new audio data to the queue
     audioQueueRef.current.push(data);
     log(`Audio added to queue. Queue length: ${audioQueueRef.current.length}`);
@@ -266,6 +467,17 @@ export default function Home() {
       playNextAudio();
     }
   };
+
+  // const handleAudioResponse = (data) => {
+  //   // Add the new audio data to the queue
+  //   audioQueueRef.current.push(data);
+  //   log(`Audio added to queue. Queue length: ${audioQueueRef.current.length}`);
+    
+  //   // If not currently playing, start playing the queue
+  //   if (!isPlayingRef.current) {
+  //     playNextAudio();
+  //   }
+  // };
 
   return (
     <div>

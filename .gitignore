@@ -12,3 +12,8 @@ logs.txt
 *.pyc
 package.json
 package-lock.json
+logs.txt
+b64audio.txt
+server_logs.txt
+saved_logs.txt
+saved_server_logs.txt

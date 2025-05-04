@@ -252,15 +252,18 @@ class OpenAITranscriber:
                 log("Appropriate length")
                 to_send_audio = reconstruct_audio(self.current_audio)
                 print(to_send_audio)
-                base_64_audio = base64_encode_audio(to_send_audio) #encoding before sending
-                loop.run_until_complete(self.send_to_client(base_64_audio))
-                print("Message created, about to send")
-                log("Message created, about to send")
+                if (len(to_send_audio) > 0):
+                    log(f"Audio data length: {len(to_send_audio)}")
+                    base_64_audio = base64_encode_audio(to_send_audio) #encoding before sending
+                    if base_64_audio:
+                        loop.run_until_complete(self.send_to_client(base_64_audio))
+                        print("Message sent")
+                        log("Message sen")
+                    else:
+                        log("Failed to encode audio")
+                else:
+                    log("Reconstructed audio is empty")
                 self.current_audio = []
-                
-                print("Message sent")
-                log("Message sent")
-                #self.sent_audio = False
             else:
                 log("Insufficient length")
                 return
@@ -287,6 +290,9 @@ class OpenAITranscriber:
         log("Error:" + error_msg)
     
     async def send_to_client(self, base_64_audio):
+        if not base_64_audio:
+            log("Attempted to send empty audio data")
+            return
         message = {
                     "event_type": "audio_response_transmitting",
                     "event_data": base_64_audio
