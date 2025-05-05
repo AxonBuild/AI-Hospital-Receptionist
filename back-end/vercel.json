@@ -10,6 +10,24 @@
         "src": "/(.*)",
         "dest": "app.py"
       }
+    ],
+    "excludeFiles": [
+        "**/*.pyc",
+        "**/__pycache__/**",
+        "**/env/**",
+        "**/data/**",
+        ".git/**",
+        ".venv/**",
+        "automations/**",
+        "docs/**",
+        "logdir/**",
+        "tests/**",
+        "prisma/migrations/**",
+        "Dockerfile",
+        "README.md",
+        "pytest.ini",
+        "package.json",
+        "**.wav"
     ]
     
   }
