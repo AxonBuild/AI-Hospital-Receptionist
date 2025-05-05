@@ -206,74 +206,6 @@ export default function Home() {
   };
 
   
-  // const playNextAudio = () => {
-  //   if (audioQueueRef.current.length === 0) {
-  //     isPlayingRef.current = false;
-  //     return;
-  //   }
-  
-  //   const base64Data = audioQueueRef.current.shift();
-  //   isPlayingRef.current = true;
-  
-  //   try {
-  //     // Convert base64 to array buffer
-  //     const binaryString = atob(base64Data);
-  //     const bytes = new Uint8Array(binaryString.length);
-      
-  //     for (let i = 0; i < binaryString.length; i++) {
-  //       bytes[i] = binaryString.charCodeAt(i);
-  //     }
-  
-  //     // Check if we have valid data
-  //     if (bytes.length < 2) {
-  //       log("Received invalid audio data (too short). Skipping...");
-  //       isPlayingRef.current = false;
-  //       playNextAudio(); // Try the next chunk
-  //       return;
-  //     }
-      
-  //     // Create audio context with explicit sample rate matching the server
-  //     const audioContext = new (window.AudioContext || window.webkitAudioContext)({
-  //       sampleRate: 16000 // CRITICAL: Match the sample rate from the server
-  //     });
-      
-  //     // Create a WAV header for the PCM data
-  //     const wav = createWavFromPCM(bytes);
-      
-  //     // Use the built-in decoder
-  //     audioContext.decodeAudioData(
-  //       wav.buffer,
-  //       (audioBuffer) => {
-  //         // Create a source node
-  //         const source = audioContext.createBufferSource();
-  //         source.buffer = audioBuffer;
-          
-  //         // IMPORTANT: Set the playback rate to ensure correct speed
-  //         source.playbackRate.value = 1.5;
-          
-  //         // Connect to destination and play
-  //         source.connect(audioContext.destination);
-          
-  //         source.onended = () => {
-  //           log("Audio playback finished");
-  //           playNextAudio();
-  //         };
-          
-  //         source.start(0);
-  //         log("Audio playback started successfully");
-  //       },
-  //       (err) => {
-  //         log(`Audio decoding failed: ${err}. Skipping this chunk.`);
-  //         isPlayingRef.current = false;
-  //         playNextAudio(); // Try the next chunk
-  //       }
-  //     );
-  //   } catch (error) {
-  //     log(`Error processing audio: ${error.message}`);
-  //     isPlayingRef.current = false;
-  //     playNextAudio(); // Try the next chunk
-  //   }
-  // };
   const playNextAudio = () => {
     if (audioQueueRef.current.length === 0) {
       isPlayingRef.current = false;
@@ -417,18 +349,6 @@ export default function Home() {
     return wav;
   };
   
-
-  // const handleAudioResponse = (data) => {
-  //   // Add the new audio data to the queue
-  //   audioQueueRef.current.push(data);
-  //   log(`Audio added to queue. Queue length: ${audioQueueRef.current.length}`);
-    
-  //   // If not currently playing, start playing the queue
-  //   if (!isPlayingRef.current) {
-  //     playNextAudio();
-  //   }
-  // };
-
   return (
     <div>
       <div id="centered-text">
