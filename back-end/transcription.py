@@ -234,6 +234,7 @@ class OpenAITranscriber:
         elif(data['type'] == "conversation.item.input_audio_transcription.completed"):
             transcript = data['transcript']
             item_id = data['item_id']
+            log(f"To send for rag: {transcript}")
             rag2(self.openai_ws, transcript)
             
             
