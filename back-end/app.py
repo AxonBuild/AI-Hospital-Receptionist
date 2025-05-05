@@ -13,30 +13,9 @@ import uuid
 import traceback
 from typing import Dict
 import asyncio
+from utils import log, record_audio, reset_logs
 
-def resetb64():
-    file = open("b64audio.txt", "w")
-    file.write("")
-    file.close()
-    
-def reset_logs():
-    file = open("server_logs.txt", "w")
-    file.write("")
-    file.close()
-
-def log(text):
-     with open("server_logs.txt", "a") as file:
-        if isinstance(text, dict):
-            text = json.dumps(text, indent=2)
-        if not isinstance(text, str):
-            text = str(text)
-        file.write(text + '\n')
-
-def record_audio(text):
-    with open("b64audio.txt", "a") as file:
-        if not isinstance(text, str):
-            text = str(text)
-        file.write(text + '\n')
+LOG_FILENAME = "server_logs.txt"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -44,7 +23,7 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger("websocket-audio")
-reset_logs()
+reset_logs(LOG_FILENAME)
 
 app = FastAPI()
 transcriber_instances: Dict[str, OpenAITranscriber] = {}
@@ -84,22 +63,22 @@ async def websocket_endpoint(websocket: WebSocket):
         try:
             while True:
                 data = await websocket.receive_json()  
-                log(data)
+                log(data, LOG_FILENAME)
                 #this one is actually response
                 if data['event_type'] == 'audio_response_transmitting':
                     try:
-                        log("Output Data transmitting")
+                        log("Output Data transmitting", LOG_FILENAME)
                         await websocket.send_json(data)
-                        log("Output Data transmitted")
+                        log("Output Data transmitted", LOG_FILENAME)
                     except Exception as e:
                         logger.error(f"Failed to send to client: {e}")
                         raise  # This will trigger the outer exception handler
                 elif data['event_type'] == 'audio_input_transmitting':
-                    log("Transmitting data")
+                    log("Transmitting data", LOG_FILENAME)
                     if transcriber_instances[connection_id].is_openai_connected():
                         transcriber_instances[connection_id].send_audio_to_openai(data['event_data'])
                         record_audio(data['event_data'])
-                    log("Data transmitted")    
+                    log("Data transmitted", LOG_FILENAME)
         except Exception as e:
             logger.error(f"WebSocket error: {str(e)}")
         finally:
@@ -111,7 +90,7 @@ async def websocket_endpoint(websocket: WebSocket):
             logger.info("WebSocket connection closed")
     except Exception as e:
         print(e)
-        log(e)
+        log(e, LOG_FILENAME)
         traceback.print_exc()
         
 if __name__ == "__main__":
@@ -119,5 +98,5 @@ if __name__ == "__main__":
         uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
     except Exception as e:
         print(e)
-        log(e)
+        log(e, LOG_FILENAME)
         traceback.print_exc()
