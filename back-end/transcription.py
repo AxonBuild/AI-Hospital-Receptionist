@@ -258,7 +258,7 @@ class OpenAITranscriber:
                     if base_64_audio:
                         loop.run_until_complete(self.send_to_client(base_64_audio))
                         print("Message sent")
-                        log("Message sen")
+                        log("Message sent")
                     else:
                         log("Failed to encode audio")
                 else:

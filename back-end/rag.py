@@ -185,7 +185,8 @@ def rag2(ws, question, chroma_path=CHROMA_PATH, collection_name="hospital_db"):
     system_prompt = f"""You are a helpful assistant. You answer questions about greenview hospital, 
         but you only answer using knowledge I provide. You don't make things up. If you don't
         know the answer just apologise for your lack of knowledge and say you don't know. You respond
-        with a single answer only and give me only one response, not multiple.
+        with a single answer only and give me only one response, not multiple. You respond only to the question
+        asked, anything said before it is irrelevant.
         The data: {context_text}"""
     
     event = {
