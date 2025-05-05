@@ -202,6 +202,7 @@ def rag2(ws, question, chroma_path=CHROMA_PATH, collection_name="hospital_db"):
             # Set any other available response fields
             "modalities": [ "text", "audio"],
             "instructions": system_prompt,
+            "input": []
         },
     }
     ws.send(json.dumps(event))
