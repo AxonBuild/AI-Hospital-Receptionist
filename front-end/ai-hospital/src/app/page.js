@@ -1,311 +1,528 @@
-// page.js
-"use client"; // This is important to enable client-side functionality
-
+"use client";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import styles from "./page.module.css";
 
-export default function Home() 
-{
-  // Add state to track recording status
+export default function Home() {
   const [isRecording, setIsRecording] = useState(false);
   const [logMessages, setLogMessages] = useState([]);
-  
-  // Create refs to access DOM elements
+  const [connectionReady, setConnectionReady] = useState(false);
+
   const dataRef = useRef(null);
   const summaryRef = useRef(null);
   const audioRef = useRef(null);
-  const canvasRef = useRef(null);
-  const fileInputRef = useRef(null);
-  
-  // Store mediaRecorder and socket in refs so they persist between renders
   const mediaRecorderRef = useRef(null);
   const socketRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const sourceNodeRef = useRef(null);
+  const processorRef = useRef(null);
+  const nodesConnectedRef = useRef(false);
+  
+  // Audio queue and playback state
+  const audioQueueRef = useRef([]);
+  const isPlayingRef = useRef(false);
 
-  // Custom logger function
   const log = (message) => {
     console.log(`[${new Date().toLocaleTimeString()}] ${message}`);
     setLogMessages(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${message}`]);
   };
 
-  // Define toggleRecording function as a React handler
-  const toggleRecording = () => {
-    log(`Toggle button clicked. Current isRecording state: ${isRecording}`);
-    let mic = document.getElementById("mic")
-    let micText = document.getElementById("mic-text")
-    if (!isRecording) {
-      socketRef.current = new WebSocket('ws://localhost:8000/ws');
-      log("Websocket opened");
-      mic.classList.add("opacity-animation")
-      micText.classList.add("opacity-animation")
-      onMessage();
-    } else {
-      stopRecording();
-    }
-  };
-
-  // const startRecording = () => {
-  //   log("Starting recording process...");
-    
-  //   // Start recording
-  //   socketRef.current = new WebSocket('ws://localhost:8000/ws');
-    
-  //   socketRef.current.onopen = () => {
-  //     log("WebSocket connection established");
-      
-  //     const mediaStreamConstraints = {
-  //       audio: true,
-  //     };
-      
-  //     log("Requesting microphone access...");
-  //     navigator.mediaDevices.getUserMedia(mediaStreamConstraints)
-  //       .then(stream => {
-  //         log("Microphone access granted");
-          
-  //         // Check if the browser supports the WebM format
-  //         const mimeType = MediaRecorder.isTypeSupported('audio/webm') 
-  //           ? 'audio/webm' 
-  //           : 'audio/mp4';
-          
-  //         log(`Using MIME type: ${mimeType}`);
-          
-  //         mediaRecorderRef.current = new MediaRecorder(stream, {
-  //           mimeType: mimeType,
-  //           audioBitsPerSecond: 16000
-  //         });
-          
-  //         const interval = 1; // Send audio chunks every 1 second
-  //         mediaRecorderRef.current.start(interval * 1000);
-  //         log(`Started recording, sending chunks every ${interval} second(s)`);
-          
-  //         mediaRecorderRef.current.ondataavailable = event => {
-  //           if (event.data.size > 0) {
-  //             log(`Audio chunk received: ${event.data.size} bytes`);
-              
-  //             // For this basic demo, convert the blob to base64 for easier transmission
-  //             const reader = new FileReader();
-  //             reader.onloadend = () => {
-  //               if (reader.readyState === FileReader.DONE && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-  //                 // Send as text since our backend is expecting text
-  //                 const base64data = btoa(
-  //                   new Uint8Array(reader.result)
-  //                     .reduce((data, byte) => data + String.fromCharCode(byte), '')
-  //                 );
-                  
-  //                 log(`Sending audio chunk: ${base64data.length} chars in base64`);
-  //                 socketRef.current.send(JSON.stringify({
-  //                   event_type: "audio_input_transmitting",
-  //                   event_data: base64data
-  //                 }));
-  //               }
-  //             };
-  //             reader.readAsArrayBuffer(event.data);
-  //           }
-  //         };
-          
-  //         //Make sure state is updated properly
-  //         setIsRecording(true);
-  //         log("Recording state set to TRUE");
-  //       })
-  //       .catch(error => {
-  //         log(`Error accessing microphone: ${error.message}`);
-  //         console.error("Error accessing microphone:", error);
-  //       });
-  //   };
-
-  const onMessage = () => {
-    socketRef.current.onmessage = event => {
-      log(`Received WebSocket message: ${event.data.substring(0, 50)}...`);
-      const mic = document.getElementById("mic")
-      const micText = document.getElementById("mic-text")
-      mic.classList.remove("opacity-animation")
-      micText.classList.remove("opacity-animation")
-      try {
-        // Try to parse as JSON
-        const data = JSON.parse(event.data);
-        log(JSON.stringify(data).slice(0, 20))
-        // Handle different message types
-        if (data.event_type == "audio_response_transmitting") {
-          log("Received audio response, attempting to play...");
-          
-          // Convert base64 to array buffer
-          const base64Data = data.event_data;
-          const binaryString = atob(base64Data);
-          const bytes = new Uint8Array(binaryString.length);
-          
-          for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
-          
-          // Create audio context
-          const audioContext = new (window.AudioContext || window.webkitAudioContext)({
-            sampleRate: 16000 // Match your audio sample rate
-          });
-          
-          // Create audio buffer from PCM data
-          const audioBuffer = audioContext.createBuffer(1, bytes.length / 2, audioContext.sampleRate);
-          const channelData = audioBuffer.getChannelData(0);
-          
-          // Convert 16-bit PCM to float32
-          for (let i = 0; i < channelData.length; i++) {
-            // Get 16-bit sample (2 bytes per sample)
-            const sample = (bytes[i * 2] | (bytes[i * 2 + 1] << 8));
-            // Convert to signed value
-            const signedSample = sample >= 0x8000 ? sample - 0x10000 : sample;
-            // Convert to float in range [-1, 1]
-            channelData[i] = signedSample / 32768.0;
-          }
-          
-          // Play audio
-          const source = audioContext.createBufferSource();
-          source.buffer = audioBuffer;
-          source.connect(audioContext.destination);
-          source.start(0);
-          log("Audio playback started"); 
-        } else {
-          // For text/transcript messages
-          if (dataRef.current) {
-            dataRef.current.innerHTML = event.data;
-          }
-        }
-      } catch (e) {
-        // Not JSON or other error, just display as text
-        if (dataRef.current) {
-          dataRef.current.innerHTML = event.data;
-        }
-        mic.classList.remove("opacity-animation")
-        micText.classList.remove("opacity-animation")
-        log(`Error handling WebSocket message: ${e.message}`);
-        console.error("Error handling WebSocket message:", e);
-      }
-    };
-    
-    socketRef.current.onerror = (error) => {
-      const mic = document.getElementById("mic")
-      const micText = document.getElementById("mic-text")
-      mic.classList.remove("opacity-animation")
-      micText.classList.remove("opacity-animation")
-      log(`WebSocket error occurred`);
-      console.log("WebSocket error:", error.message || "Unknown error"); ;
-    };
-    
-    socketRef.current.onclose = (event) => {
-      const mic = document.getElementById("mic")
-      const micText = document.getElementById("mic-text")
-      mic.classList.remove("opacity-animation")
-      micText.classList.remove("opacity-animation")
-      log(`WebSocket connection closed: ${event.code} ${event.reason}`);
-    };
-  };    
-
-  const stopRecording = () => {
-    // Stop recording
-    log("Stopping recording...");
-    log("Recording state before stopping: TRUE");
-    
-    if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
-      log("MediaRecorder stopped");
-      
-      // Stop all tracks
-      if (mediaRecorderRef.current.stream) {
-        mediaRecorderRef.current.stream.getTracks().forEach(track => {
-          track.stop();
-          log(`Audio track stopped`);
-        });
-      }
-    }
-    
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      try {
-        log("Sending stop signal");
-        socketRef.current.send(JSON.stringify({
-          type: "command",
-          command: "stop"
-        }));
-        
-        // Close the socket after sending the stop command
-        log("Closing WebSocket connection");
-        socketRef.current.close();
-        mic.classList.remove("opacity-animation")
-        micText.classList.remove("opacity-animation")
-        log("WebSocket connection closed by client");
-      } catch (e) {
-        log(`Error during recording stop: ${e.message}`);
-        console.error("Error during recording stop:", e);
-      }
-    }
-    
-    // Make sure state is updated
-    setIsRecording(false);
-    log("Recording state set to FALSE");
-  };
-
-  // Cleanup on component unmount
   useEffect(() => {
-    let h2text = document.querySelector("#instruction")
-    h2text.classList.add("bounce-absolute")
+    if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
+      socketRef.current = new WebSocket('ws://localhost:8000/ws');
+
+      socketRef.current.onmessage = (event) => {
+        log(`Received WebSocket message: ${event.data.substring(0, 50)}...`);
+        try {
+          const data = JSON.parse(event.data);
+          log(`Parsed data: ${JSON.stringify(data, null, 2)}`);
+
+          if (data.event_type === "checking connectivity" && data.event_data === "connection established") {
+            setConnectionReady(true);
+            log("Server connection confirmed - ready to record");
+          }
+
+          if (data.event_type === "audio_response_transmitting") {
+            handleAudioResponse(data.event_data);
+          }
+        } catch (e) {
+          log(`Error handling message: ${e.message}`);
+        }
+      };
+
+      socketRef.current.onerror = (error) => {
+        log(`WebSocket error: ${error.message || "Unknown error"}`);
+      };
+
+      socketRef.current.onclose = (event) => {
+        log(`WebSocket closed: ${event.code} ${event.reason}`);
+      };
+
+      log("WebSocket initialized - waiting for confirmation");
+    }
+
     return () => {
-      log("Cleaning up resources on true component unmount");
-      
       if (socketRef.current) {
         socketRef.current.close();
-      }
-      
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        mediaRecorderRef.current.stop();
-        
-        if (mediaRecorderRef.current.stream) {
-          mediaRecorderRef.current.stream.getTracks().forEach(track => {
-            track.stop();
-          });
-        }
+        log("WebSocket connection closed");
       }
     };
-  }, []); 
+  }, []);
+
+  useEffect(() => {
+    let h2text = document.querySelector("#instruction");
+    h2text?.classList.add("bounce-absolute");
+
+    if (connectionReady && isRecording) {
+      startActualRecording();
+    }
+
+    return () => {
+      // Safely disconnect audio nodes only if they are connected
+      if (nodesConnectedRef.current && sourceNodeRef.current && processorRef.current) {
+        try {
+          sourceNodeRef.current.disconnect(processorRef.current);
+          log("Source node disconnected successfully");
+        } catch (err) {
+          log(`Error disconnecting source node: ${err.message}`);
+        }
+
+        try {
+          processorRef.current.disconnect();
+          log("Processor node disconnected successfully");
+        } catch (err) {
+          log(`Error disconnecting processor node: ${err.message}`);
+        }
+        
+        nodesConnectedRef.current = false;
+      }
+
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close().catch(err => {
+          log(`Error closing AudioContext: ${err.message}`);
+        });
+      }
+
+      if (mediaRecorderRef.current?.state !== 'inactive') {
+        mediaRecorderRef.current?.stop();
+        mediaRecorderRef.current?.stream?.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [connectionReady, isRecording]);
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      setIsRecording(false);
+      stopRecording();
+    } else {
+      setIsRecording(true);
+    }
+  };
+
+  const stopRecording = () => {
+    // Safely disconnect audio nodes only if they are connected
+    if (nodesConnectedRef.current && sourceNodeRef.current && processorRef.current) {
+      try {
+        sourceNodeRef.current.disconnect(processorRef.current);
+        log("Source node disconnected successfully");
+      } catch (err) {
+        log(`Error disconnecting source node: ${err.message}`);
+      }
+
+      try {
+        processorRef.current.disconnect();
+        log("Processor node disconnected successfully");
+      } catch (err) {
+        log(`Error disconnecting processor node: ${err.message}`);
+      }
+      
+      nodesConnectedRef.current = false;
+    }
+
+    if (mediaRecorderRef.current?.state !== 'inactive') {
+      mediaRecorderRef.current?.stop();
+      mediaRecorderRef.current?.stream?.getTracks().forEach(track => track.stop());
+    }
+
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      audioContextRef.current.close().catch(err => {
+        log(`Error closing AudioContext: ${err.message}`);
+      });
+    }
+
+    log("Recording stopped");
+  };
+
+  const startActualRecording = () => {
+    log("Starting actual recording process");
+    const mediaStreamConstraints = { audio: true };
+
+    navigator.mediaDevices.getUserMedia(mediaStreamConstraints)
+      .then(stream => {
+        log("Microphone access granted");
+
+        audioContextRef.current = new AudioContext({ sampleRate: 16000 });
+        sourceNodeRef.current = audioContextRef.current.createMediaStreamSource(stream);
+        processorRef.current = audioContextRef.current.createScriptProcessor(4096, 1, 1);
+
+        sourceNodeRef.current.connect(processorRef.current);
+        processorRef.current.connect(audioContextRef.current.destination);
+        nodesConnectedRef.current = true; // Set flag to indicate nodes are connected
+
+        log("Audio processing pipeline set up");
+
+        processorRef.current.onaudioprocess = (e) => {
+          if (socketRef.current?.readyState === WebSocket.OPEN) {
+            const inputData = e.inputBuffer.getChannelData(0);
+            const pcm16 = float32ToInt16(inputData);
+            const base64data = btoa(
+              String.fromCharCode.apply(null, new Uint8Array(pcm16.buffer))
+            );
+
+            log(`Sending audio chunk: ${base64data.length} chars in base64`);
+            socketRef.current.send(JSON.stringify({
+              event_type: "audio_input_transmitting",
+              event_data: base64data
+            }));
+          }
+        };
+
+        mediaRecorderRef.current = new MediaRecorder(stream);
+        mediaRecorderRef.current.start();
+        log("Recording started");
+      })
+      .catch(error => {
+        log(`Error accessing microphone: ${error.message}`);
+      });
+  };
+
+  const float32ToInt16 = (buffer) => {
+    let l = buffer.length;
+    const buf = new Int16Array(l);
+    while (l--) {
+      buf[l] = Math.min(1, buffer[l]) * 0x7FFF;
+    }
+    return buf;
+  };
+
+  // const playNextAudio = () => {
+  //   if (audioQueueRef.current.length === 0) {
+  //     isPlayingRef.current = false;
+  //     return;
+  //   }
+
+  //   const base64Data = audioQueueRef.current.shift();
+  //   isPlayingRef.current = true;
+
+  //   // Convert base64 to array buffer
+  //   const binaryString = atob(base64Data);
+  //   const bytes = new Uint8Array(binaryString.length);
+    
+  //   for (let i = 0; i < binaryString.length; i++) {
+  //     bytes[i] = binaryString.charCodeAt(i);
+  //   }
+    
+  //   // Create audio context
+  //   const audioContext = new (window.AudioContext || window.webkitAudioContext)({
+  //     sampleRate: 16000 // Match your audio sample rate
+  //   });
+    
+  //   // Create audio buffer from PCM data
+  //   const audioBuffer = audioContext.createBuffer(1, bytes.length / 2, audioContext.sampleRate);
+  //   const channelData = audioBuffer.getChannelData(0);
+    
+  //   // Convert 16-bit PCM to float32
+  //   for (let i = 0; i < channelData.length; i++) {
+  //     // Get 16-bit sample (2 bytes per sample)
+  //     const sample = (bytes[i * 2] | (bytes[i * 2 + 1] << 8));
+  //     // Convert to signed value
+  //     const signedSample = sample >= 0x8000 ? sample - 0x10000 : sample;
+  //     // Convert to float in range [-1, 1]
+  //     channelData[i] = signedSample / 32768.0;
+  //   }
+    
+  //   // Play audio
+  //   const source = audioContext.createBufferSource();
+  //   source.buffer = audioBuffer;
+  //   source.connect(audioContext.destination);
+    
+  //   // When audio finishes playing, play the next one in queue
+  //   source.onended = () => {
+  //     log("Audio playback finished");
+  //     playNextAudio();
+  //   };
+    
+  //   source.start(0);
+  //   log("Audio playback started");
+  // };
+  // const playNextAudio = () => {
+  //   if (audioQueueRef.current.length === 0) {
+  //     isPlayingRef.current = false;
+  //     return;
+  //   }
+  
+  //   const base64Data = audioQueueRef.current.shift();
+  //   isPlayingRef.current = true;
+  
+  //   // Convert base64 to array buffer
+  //   const binaryString = atob(base64Data);
+  //   const bytes = new Uint8Array(binaryString.length);
+    
+  //   for (let i = 0; i < binaryString.length; i++) {
+  //     bytes[i] = binaryString.charCodeAt(i);
+  //   }
+    
+  //   // Create audio context with the correct sample rate (16000)
+  //   const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
+  //   // Decode the audio data
+  //   audioContext.decodeAudioData(
+  //     bytes.buffer,
+  //     (audioBuffer) => {
+  //       // Play audio
+  //       const source = audioContext.createBufferSource();
+  //       source.buffer = audioBuffer;
+  //       source.connect(audioContext.destination);
+        
+  //       // When audio finishes playing, play the next one in queue
+  //       source.onended = () => {
+  //         log("Audio playback finished");
+  //         playNextAudio();
+  //       };
+        
+  //       source.start(0);
+  //       log("Audio playback started");
+  //     },
+  //     (err) => {
+  //       // If decodeAudioData fails, fall back to manual conversion
+  //       log(`Audio decoding failed: ${err}. Using fallback method.`);
+        
+  //       // Create audio buffer from PCM data
+  //       const audioBuffer = audioContext.createBuffer(1, bytes.length / 2, 16000);
+  //       const channelData = audioBuffer.getChannelData(0);
+        
+  //       // Convert 16-bit PCM to float32
+  //       for (let i = 0; i < channelData.length; i++) {
+  //         // Get 16-bit sample (2 bytes per sample)
+  //         const sample = (bytes[i * 2] | (bytes[i * 2 + 1] << 8));
+  //         // Convert to signed value
+  //         const signedSample = sample >= 0x8000 ? sample - 0x10000 : sample;
+  //         // Convert to float in range [-1, 1]
+  //         channelData[i] = signedSample / 32768.0;
+  //       }
+        
+  //       // Play audio
+  //       const source = audioContext.createBufferSource();
+  //       source.buffer = audioBuffer;
+  //       source.connect(audioContext.destination);
+        
+  //       source.onended = () => {
+  //         log("Audio playback finished");
+  //         playNextAudio();
+  //       };
+        
+  //       source.start(0);
+  //       log("Audio playback started (fallback method)");
+  //     }
+  //   );
+  // };
+  const playNextAudio = () => {
+    if (audioQueueRef.current.length === 0) {
+      isPlayingRef.current = false;
+      return;
+    }
+  
+    const base64Data = audioQueueRef.current.shift();
+    isPlayingRef.current = true;
+  
+    try {
+      // Convert base64 to array buffer
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+  
+      // Check if we have valid data
+      if (bytes.length < 2) {
+        log("Received invalid audio data (too short). Skipping...");
+        isPlayingRef.current = false;
+        playNextAudio(); // Try the next chunk
+        return;
+      }
+      
+      // Create audio context with explicit sample rate matching the server
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)({
+        sampleRate: 16000 // CRITICAL: Match the sample rate from the server
+      });
+      
+      // Create a WAV header for the PCM data
+      const wav = createWavFromPCM(bytes);
+      
+      // Use the built-in decoder
+      audioContext.decodeAudioData(
+        wav.buffer,
+        (audioBuffer) => {
+          // Create a source node
+          const source = audioContext.createBufferSource();
+          source.buffer = audioBuffer;
+          
+          // IMPORTANT: Set the playback rate to ensure correct speed
+          source.playbackRate.value = 1.5;
+          
+          // Connect to destination and play
+          source.connect(audioContext.destination);
+          
+          source.onended = () => {
+            log("Audio playback finished");
+            playNextAudio();
+          };
+          
+          source.start(0);
+          log("Audio playback started successfully");
+        },
+        (err) => {
+          log(`Audio decoding failed: ${err}. Skipping this chunk.`);
+          isPlayingRef.current = false;
+          playNextAudio(); // Try the next chunk
+        }
+      );
+    } catch (error) {
+      log(`Error processing audio: ${error.message}`);
+      isPlayingRef.current = false;
+      playNextAudio(); // Try the next chunk
+    }
+  };
+  
+  // Improved WAV creation function with correct sample rate
+  const createWavFromPCM = (pcmData) => {
+    const numChannels = 1;
+    const sampleRate = 16000; // MUST match the sample rate from the server
+    const bitsPerSample = 16;
+    
+    // Calculate sizes
+    const dataSize = pcmData.length;
+    const wavSize = 44 + dataSize;
+    
+    // Create a buffer for the WAV file
+    const wav = new Uint8Array(wavSize);
+    
+    // WAV header (44 bytes)
+    const setString = (offset, string) => {
+      for (let i = 0; i < string.length; i++) {
+        wav[offset + i] = string.charCodeAt(i);
+      }
+    };
+    
+    const setUint32 = (offset, value) => {
+      wav[offset] = value & 0xff;
+      wav[offset + 1] = (value >> 8) & 0xff;
+      wav[offset + 2] = (value >> 16) & 0xff;
+      wav[offset + 3] = (value >> 24) & 0xff;
+    };
+    
+    const setUint16 = (offset, value) => {
+      wav[offset] = value & 0xff;
+      wav[offset + 1] = (value >> 8) & 0xff;
+    };
+    
+    // RIFF chunk descriptor
+    setString(0, 'RIFF');
+    setUint32(4, 36 + dataSize);
+    setString(8, 'WAVE');
+    
+    // fmt sub-chunk
+    setString(12, 'fmt ');
+    setUint32(16, 16); // Subchunk1Size (16 for PCM)
+    setUint16(20, 1); // AudioFormat (1 for PCM)
+    setUint16(22, numChannels);
+    setUint32(24, sampleRate); // CRITICAL: Correct sample rate
+    setUint32(28, sampleRate * numChannels * bitsPerSample / 8); // ByteRate
+    setUint16(32, numChannels * bitsPerSample / 8); // BlockAlign
+    setUint16(34, bitsPerSample);
+    
+    // data sub-chunk
+    setString(36, 'data');
+    setUint32(40, dataSize);
+    
+    // Copy the PCM data
+    wav.set(pcmData, 44);
+    
+    return wav;
+  };
+  
+  const handleAudioResponse = (data) => {
+    if (!data || data.length === 0) {
+      log("Received empty audio data. Ignoring...");
+      return;
+    }
+    
+    // Add the new audio data to the queue
+    audioQueueRef.current.push(data);
+    log(`Audio added to queue. Queue length: ${audioQueueRef.current.length}`);
+    
+    // If not currently playing, start playing the queue
+    if (!isPlayingRef.current) {
+      playNextAudio();
+    }
+  };
+
+  // const handleAudioResponse = (data) => {
+  //   // Add the new audio data to the queue
+  //   audioQueueRef.current.push(data);
+  //   log(`Audio added to queue. Queue length: ${audioQueueRef.current.length}`);
+    
+  //   // If not currently playing, start playing the queue
+  //   if (!isPlayingRef.current) {
+  //     playNextAudio();
+  //   }
+  // };
 
   return (
     <div>
       <div id="centered-text">
-        <h1>Hospital Virtual Receptionist</h1>
+        <h1>Greenview Virtual Receptionist</h1>
       </div>
-      <h2 id = "instruction" className = "absoluteUppies">Hello visitor! How can I help you?</h2>
+      <h2 id="instruction" className="absoluteUppies">Hello visitor! How can I help you?</h2>
       <div id="speak-button">
-        {/* Use onClick React handler instead of ref + addEventListener */}
         <button
           id="speak"
           onClick={toggleRecording}
+          disabled={!connectionReady}
           style={{
             padding: '8px 16px',
             background: '#0097A7',
             color: 'white',
             border: 'none',
             borderRadius: '5px',
-            cursor: 'pointer',
+            cursor: connectionReady ? 'pointer' : 'not-allowed',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '6px',
             flexDirection: 'row',
             whiteSpace: 'nowrap',
-            minWidth: 'fit-content'
+            minWidth: 'fit-content',
+            opacity: connectionReady ? 1 : 0.7
           }}
         >
-            <img
-              src="/mic.svg"
-              width={18}
-              height={18}
-              alt={isRecording ? "Stop Recording" : "Start Recording"}
-              style={{ flexShrink: 0 }}
-              id = "mic"
-            />
-            <span id = "mic-text">{isRecording ? 'Stop Recording' : 'Start Recording'}</span>
+          <img
+            src="/mic.svg"
+            width={18}
+            height={18}
+            alt={isRecording ? "Stop Recording" : "Start Recording"}
+            style={{ flexShrink: 0 }}
+            id="mic"
+          />
+          <span id="mic-text">
+            {!connectionReady ? 'Connecting...' : 
+             isRecording ? 'Stop Recording' : 'Start Recording'}
+          </span>
         </button>
       </div>
       <div id="data" ref={dataRef}></div>
       <div id="summary" ref={summaryRef}></div>
-      
-      {/* Logging display with auto-scroll to bottom */}
       <div style={{ 
         marginTop: '20px',
         border: '1px solid #ccc', 
