@@ -83,12 +83,21 @@ from fill_db import fill_db
 import json
 import os
 
+load_dotenv()
+
 DATA_PATH = "./data/hospital_data.pdf"
 CHROMA_PATH = "./chroma_db"
 
+# Initialize ChromaDB client
+chroma_client = chromadb.PersistentClient(path=CHROMA_PATH)
+
+# Set up the same embedding function that was used for indexing
+openai_ef = embedding_functions.OpenAIEmbeddingFunction(
+    api_key=os.environ.get("OPENAI_API_KEY"),
+    model_name="text-embedding-3-small"
+)
+
 def rag(question, chroma_path=CHROMA_PATH, collection_name="hospital_db"):
-    load_dotenv()
-    
     # Initialize ChromaDB client
     chroma_client = chromadb.PersistentClient(path=chroma_path)
     
@@ -142,18 +151,7 @@ def rag(question, chroma_path=CHROMA_PATH, collection_name="hospital_db"):
     return response.choices[0].message.content
 
 
-def rag2(ws, question, chroma_path=CHROMA_PATH, collection_name="hospital_db"):
-    load_dotenv()
-    
-    # Initialize ChromaDB client
-    chroma_client = chromadb.PersistentClient(path=chroma_path)
-    
-    # Set up the same embedding function that was used for indexing
-    openai_ef = embedding_functions.OpenAIEmbeddingFunction(
-        api_key=os.environ.get("OPENAI_API_KEY"),
-        model_name="text-embedding-3-small"
-    )
-    
+def rag2(question, collection_name="hospital_db"):
     try:
         # First try to get the collection with the embedding function
         collection = chroma_client.get_collection(name=collection_name, embedding_function=openai_ef)
@@ -203,8 +201,8 @@ def rag2(ws, question, chroma_path=CHROMA_PATH, collection_name="hospital_db"):
             "instructions": system_prompt,
         },
     }
-    ws.send(json.dumps(event))
-
+    
+    return event
 
 if __name__ == "__main__":
     client = chromadb.PersistentClient(path="./chroma_db")
