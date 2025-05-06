@@ -1,20 +1,15 @@
 import sounddevice as sd
-import numpy as np
 import json
-import configparser
 import websocket
 import time
 import base64
-import requests
 import os
 import struct
 from dotenv import load_dotenv
 import threading
 import asyncio
-import soundfile as sf
 from reconstruct_audio import reconstruct_audio
-from rag import rag, rag2
-import ssl
+from rag import rag2
 from threading import Lock
 from utils import (
     log,
@@ -160,10 +155,7 @@ class OpenAITranscriber:
                 print("Audio streaming stopped")
                 log("Audio streaming stopped", LOG_FILENAME)
                 
-        # self.audio_thread = threading.Thread(target=audio_stream_thread)
-        # self.audio_thread.daemon = True
-        # self.audio_thread.start()
-    
+        
     def websocket_working(self, socket_name):
         if(socket_name == "client"):
             return self.client_websocket is not None and self.client_websocket.sock is not None and self.client_websocket.sock.connected
@@ -190,7 +182,6 @@ class OpenAITranscriber:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
         if(data['type'] == "session.created"):
-            pass
             event = {
                 "type": "session.update",
                 "session": {

@@ -95,7 +95,7 @@ async def websocket_endpoint(websocket: WebSocket):
         
 if __name__ == "__main__":
     try:
-        uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+        uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True, reload_excludes=["b64audio.txt", "logs.txt", "server_logs.txt", "saved_server_logs.txt", "saved_logs.txt"])
     except Exception as e:
         print(e)
         log(e, LOG_FILENAME)
