@@ -20,3 +20,11 @@ saved_server_logs.txt
 back-end/__pycache__/
 response_example.txt
 *.pyc
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+b64audio.txt
+logs.txt
+server_logs.txt
