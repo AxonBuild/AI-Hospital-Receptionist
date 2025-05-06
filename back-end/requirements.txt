@@ -15,14 +15,11 @@ pydantic==2.11.3
 tiktoken==0.9.0
 
 # Audio processing (if needed for your project)
-PyAudio==0.2.14
-pydub==0.25.1
 sounddevice==0.5.1
 soundfile==0.13.1
 
 # PDF processing (if needed for your project)
 pypdf==5.4.0
-pdfplumber==0.11.6
 
 # Web framework (if you're using FastAPI)
 fastapi==0.115.9
@@ -31,7 +28,5 @@ uvicorn==0.34.1
 # Utilities
 python-dotenv==1.1.0
 
-
 # Machine learning/AI (if needed)
-transformers==4.51.3
 sentence-transformers==4.1.0
