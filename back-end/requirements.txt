@@ -1,15 +1,37 @@
 # Core dependencies
 langchain==0.3.23
 langchain-community==0.3.21
-langchain-core==0.3.54
+langchain-core==0.3.58
+langchain-openai==0.3.16
+langchain-qdrant==0.2.0
 openai==1.75.0
 
-# Vector database
-chromadb==1.0.5
+# Vector databases
+qdrant-client==1.14.2
 
 # Data processing
 numpy==2.2.4
 pydantic==2.11.3
+tiktoken==0.9.0
+
+# Audio processing (if needed for your project)
+PyAudio==0.2.14
+pydub==0.25.1
+sounddevice==0.5.1
+soundfile==0.13.1
+
+# PDF processing (if needed for your project)
+pypdf==5.4.0
+pdfplumber==0.11.6
+
+# Web framework (if you're using FastAPI)
+fastapi==0.115.9
+uvicorn==0.34.1
 
 # Utilities
 python-dotenv==1.1.0
+
+
+# Machine learning/AI (if needed)
+transformers==4.51.3
+sentence-transformers==4.1.0
