@@ -60,6 +60,7 @@ class OpenAITranscriber:
     def initialize_websockets(self):
         try:
             OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+            
             if not OPENAI_API_KEY:
                 raise ValueError("Missing OPENAI_API_KEY")
             
@@ -135,8 +136,6 @@ class OpenAITranscriber:
     def on_openai_open(self, ws):
         print("Connected to OpenAI server.")
         log("Connected to OpenAI server.", LOG_FILENAME)
-        #self.stream_active = True
-        #self.start_audio_stream()
     
     def start_audio_stream(self):
         def audio_stream_thread():
@@ -167,12 +166,6 @@ class OpenAITranscriber:
         
         print("Raw message received from OpenAI")
         log("Raw message received from OpenAI", LOG_FILENAME)
-        # # Forward the message to the client
-        # if self.client_websocket:
-        #     try:
-        #         self.client_websocket.send(json.dumps(data))
-        #     except Exception as e:
-        #         print(f"Error sending to client: {e}")
         print(data)
         log(data, LOG_FILENAME)
          # Create event loop if none exists
