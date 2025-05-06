@@ -17,5 +17,5 @@ b64audio.txt
 server_logs.txt
 saved_logs.txt
 saved_server_logs.txt
-__pycache__/
+backend/__pycache__/
 response_example.txt
