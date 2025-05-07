@@ -82,20 +82,20 @@ class OpenAITranscriber:
             self.openai_thread.start()
             time.sleep(1)  # Give time for connection
         except Exception as e:
-            print(f"WebSocket initialization failed: {e}")
+            #print(f"WebSocket initialization failed: {e}")
             log(f"WebSocket initialization failed: {e}", LOG_FILENAME)    
         # Add these new methods for better connection management
     
     def on_openai_close(self, ws, close_status_code, close_msg):
-        print(f"OpenAI WebSocket closed: {close_status_code} - {close_msg}")
+        #print(f"OpenAI WebSocket closed: {close_status_code} - {close_msg}")
         log(f"OpenAI WebSocket closed: {close_status_code} - {close_msg}", LOG_FILENAME)
         
     def on_client_close(self, ws, close_status_code, close_msg):
-        print(f"Client WebSocket closed: {close_status_code} - {close_msg}")
+        #print(f"Client WebSocket closed: {close_status_code} - {close_msg}")
         log(f"Client WebSocket closed: {close_status_code} - {close_msg}", LOG_FILENAME)
         
     def on_client_open(self, ws):
-        print("Client WebSocket connection established")
+        #print("Client WebSocket connection established")
         log("Client WebSocket connection established", LOG_FILENAME)   
 
     def set_client_websocket(self, client_websocket):
@@ -103,7 +103,7 @@ class OpenAITranscriber:
 
     def process_audio_chunk(self, indata, frames, time, status):
         if status:
-            print("Status:", status)
+            #print("Status:", status)
             log("Status:" + str(status), LOG_FILENAME)
         if not self.stream_active or self.openai_ws is None:
             return
@@ -118,7 +118,7 @@ class OpenAITranscriber:
         with self._ws_lock:
             try:
                 if not self.is_openai_connected():
-                    print("OpenAI socket not connected, cannot send audio")
+                    #print("OpenAI socket not connected, cannot send audio")
                     return False
 
                 event = {
@@ -129,12 +129,12 @@ class OpenAITranscriber:
                 return True
                 
             except Exception as e:
-                print(f"Error sending audio to OpenAI: {str(e)}")
+                #print(f"Error sending audio to OpenAI: {str(e)}")
                 log(f"Error sending audio to OpenAI: {str(e)}", LOG_FILENAME)
                 return False
                             
     def on_openai_open(self, ws):
-        print("Connected to OpenAI server.")
+        #print("Connected to OpenAI server.")
         log("Connected to OpenAI server.", LOG_FILENAME)
     
     def start_audio_stream(self):
@@ -147,11 +147,11 @@ class OpenAITranscriber:
                                 channels=channels,
                                 samplerate=samplerate,
                                 blocksize=1024):  # You can tweak this size
-                print("Streaming... Press Ctrl+C to stop.")
+                #print("Streaming... Press Ctrl+C to stop.")
                 log("Streaming... Press Ctrl+C to stop.", LOG_FILENAME)
                 while self.stream_active:
                     sd.sleep(100)  # Just keep the stream alive
-                print("Audio streaming stopped")
+                #print("Audio streaming stopped")
                 log("Audio streaming stopped", LOG_FILENAME)
                 
         
@@ -164,9 +164,9 @@ class OpenAITranscriber:
     def on_openai_message(self, ws, message):
         data = json.loads(message)
         
-        print("Raw message received from OpenAI")
+        #print("Raw message received from OpenAI")
         log("Raw message received from OpenAI", LOG_FILENAME)
-        print(data)
+        ##print(data)
         log(data, LOG_FILENAME)
          # Create event loop if none exists
         try:
@@ -204,11 +204,11 @@ class OpenAITranscriber:
             self.openai_ws.send(json.dumps(event))
             
         elif(data['type'] == "response.text.delta"):
-            print(data)
+            #print(data)
             log(data, LOG_FILENAME)
             
         elif(data['type'] == "response.audio.delta"):
-            print(data)
+            #print(data)
             log(data, LOG_FILENAME)
             self.current_audio.append(data['delta'])
             log("Data added into array", LOG_FILENAME)
@@ -217,13 +217,13 @@ class OpenAITranscriber:
             if(len(self.current_audio) >= 0):
                 log("Appropriate length", LOG_FILENAME)
                 to_send_audio = reconstruct_audio(self.current_audio)
-                print(to_send_audio)
+                #print(to_send_audio)
                 if (len(to_send_audio) > 0):
                     log(f"Audio data length: {len(to_send_audio)}", LOG_FILENAME)
                     base_64_audio = base64_encode_audio(to_send_audio) #encoding before sending
                     if base_64_audio:
                         loop.run_until_complete(self.send_to_client(base_64_audio))
-                        print("Message sent")
+                        #print("Message sent")
                         log("Message sen", LOG_FILENAME)
                     else:
                         log("Failed to encode audio", LOG_FILENAME)
@@ -243,7 +243,7 @@ class OpenAITranscriber:
             except:
                 pass
         else:
-            print("Received event:", json.dumps(data, indent=2) + '\n')
+            #print("Received event:", json.dumps(data, indent=2) + '\n')
             log("Received event:" + json.dumps(data, indent=2) + '\n', LOG_FILENAME)
                 
     def on_error(self, ws, error):
@@ -251,7 +251,7 @@ class OpenAITranscriber:
             error_msg = str(error)
         else:
             error_msg = error
-        print("Error:", error_msg)
+        #print("Error:", error_msg)
         log("Error:" + error_msg, LOG_FILENAME)
     
     async def send_to_client(self, base_64_audio):
@@ -265,7 +265,7 @@ class OpenAITranscriber:
         try:
             await self.client_websocket.send_json(message)    
         except Exception as e:
-            print(e)
+            #print(e)
             log(str(e), LOG_FILENAME)
         
     def stop_transcription(self):
@@ -284,16 +284,16 @@ class OpenAITranscriber:
         self.openai_ws.send(json.dumps(event))       
         
 if __name__ == "__main__":
-    print("Entering main function")
+    #print("Entering main function")
     log("Entering main function", LOG_FILENAME)
     transcriber = OpenAITranscriber()
     # Keep the main thread alive to prevent immediate exit
     try:
-        print("Transcription running. Press Ctrl+C to exit...")
+        #print("Transcription running. Press Ctrl+C to exit...")
         log("Transcription running. Press Ctrl+C to exit...", LOG_FILENAME)
         while True:
             time.sleep(2.5)
     except KeyboardInterrupt:
-        print("Stopping transcription...")
+        #print("Stopping transcription...")
         log("Stopping transcription...", LOG_FILENAME)
         transcriber.stop_transcription()
