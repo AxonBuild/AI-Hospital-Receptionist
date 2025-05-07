@@ -28,9 +28,13 @@ export default function Home() {
   };
 
   useEffect(() => {
-    // socketRef.current = new WebSocket('wss://ai-hospital-receptionist-esz6.vercel.app/ws');
     if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
-      socketRef.current = new WebSocket('wss://ai-hospital-receptionist-esz6.vercel.app/ws');
+      try{
+        socketRef.current = new WebSocket('wss://ai-hospital-receptionist-esz6.vercel.app/ws');
+      }
+      catch(error){
+        log(`WebSocket connection error: ${error.message}`);
+      }
       //socketRef.current = new WebSocket('ws://localhost:8000/ws');
       socketRef.current.onmessage = (event) => {
         log(`Received WebSocket message: ${event.data.substring(0, 50)}...`);
