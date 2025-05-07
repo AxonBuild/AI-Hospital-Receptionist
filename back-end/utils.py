@@ -2,29 +2,29 @@ import base64
 import json
 import struct
 
-def resetb64():
-    file = open("b64audio.txt", "w")
-    file.write("")
-    file.close()
+# def resetb64():
+#     file = open("b64audio.txt", "w")
+#     file.write("")
+#     file.close()
     
-def reset_logs(filename):
-    file = open(filename, "w")
-    file.write("")
-    file.close()
+# def reset_logs(filename):
+#     file = open(filename, "w")
+#     file.write("")
+#     file.close()
 
-def log(text, filename):
-     with open(filename, "a") as file:
-        if isinstance(text, dict):
-            text = json.dumps(text, indent=2)
-        if not isinstance(text, str):
-            text = str(text)
-        file.write(text + '\n')
+# def log(text, filename):
+#      with open(filename, "a") as file:
+#         if isinstance(text, dict):
+#             text = json.dumps(text, indent=2)
+#         if not isinstance(text, str):
+#             text = str(text)
+#         file.write(text + '\n')
 
-def record_audio(text):
-    with open("b64audio.txt", "a") as file:
-        if not isinstance(text, str):
-            text = str(text)
-        file.write(text + '\n')
+# def record_audio(text):
+#     with open("b64audio.txt", "a") as file:
+#         if not isinstance(text, str):
+#             text = str(text)
+#         file.write(text + '\n')
         
 def amplify_audio(audio_data, gain=3.0):
     """Amplify audio by multiplying by gain factor and clipping to prevent distortion"""

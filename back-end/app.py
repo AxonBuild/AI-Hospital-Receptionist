@@ -13,9 +13,8 @@ import uuid
 import traceback
 from typing import Dict
 import asyncio
-from utils import log, record_audio, reset_logs
 
-LOG_FILENAME = "server_logs.txt"
+#LOG_FILENAME = "server_logs.txt"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -23,7 +22,7 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger("websocket-audio")
-reset_logs(LOG_FILENAME)
+#reset_logs(LOG_FILENAME)
 
 app = FastAPI()
 transcriber_instances: Dict[str, OpenAITranscriber] = {}

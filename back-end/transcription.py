@@ -11,13 +11,12 @@ from reconstruct_audio import reconstruct_audio
 from rag import rag2
 from threading import Lock
 from utils import (
-    log,
     amplify_audio,
     base64_encode_audio,
     float_to_16bit_pcm
 )
 
-LOG_FILENAME = "logs.txt"
+#LOG_FILENAME = "logs.txt"
     
 class OpenAITranscriber:
     openai_ws = None
@@ -38,9 +37,9 @@ class OpenAITranscriber:
         self.last_transcript = None
         
 
-        file = open("logs.txt", "w")
-        file.write("")
-        file.close()
+        # file = open("logs.txt", "w")
+        # file.write("")
+        # file.close()
         
         load_dotenv()
         self.initialize_websockets()
