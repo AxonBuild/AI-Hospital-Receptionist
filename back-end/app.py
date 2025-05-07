@@ -76,7 +76,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     #log("Transmitting data", LOG_FILENAME)
                     if transcriber_instances[connection_id].is_openai_connected():
                         transcriber_instances[connection_id].send_audio_to_openai(data['event_data'])
-                        record_audio(data['event_data'])
+                        #record_audio(data['event_data'])
                     #log("Data transmitted", LOG_FILENAME)
         except Exception as e:
             logger.error(f"WebSocket error: {str(e)}")
