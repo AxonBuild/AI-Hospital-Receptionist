@@ -1,6 +1,5 @@
 import base64
 import numpy as np
-import sounddevice as sd
 
 def base64_decode_audio(encoded_str):
     try:
@@ -11,15 +10,6 @@ def base64_decode_audio(encoded_str):
     except Exception as e:
         print(f"Error decoding audio: {e}")
         return np.array([], dtype=np.float32)
-
-def play_audio(float32_array, samplerate=16000):
-    if len(float32_array) == 0:
-        print("Empty audio data, skipping playback")
-        return
-    
-    float32_array = np.clip(float32_array, -1.0, 1.0)
-    sd.play(float32_array, samplerate)
-    sd.wait()
 
 def reconstruct_audio(audio_chunks):
     if not audio_chunks or len(audio_chunks) == 0:
