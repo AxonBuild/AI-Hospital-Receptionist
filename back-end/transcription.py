@@ -1,4 +1,3 @@
-import sounddevice as sd
 import json
 import websocket
 import time
@@ -136,23 +135,6 @@ class OpenAITranscriber:
     def on_openai_open(self, ws):
         #print("Connected to OpenAI server.")
         log("Connected to OpenAI server.", LOG_FILENAME)
-    
-    def start_audio_stream(self):
-        def audio_stream_thread():
-            samplerate = 16000  # Lower is easier to handle live
-            channels = 1
-            # Open a stream
-            with sd.InputStream(callback=self.process_audio_chunk,
-                                device=1,
-                                channels=channels,
-                                samplerate=samplerate,
-                                blocksize=1024):  # You can tweak this size
-                #print("Streaming... Press Ctrl+C to stop.")
-                log("Streaming... Press Ctrl+C to stop.", LOG_FILENAME)
-                while self.stream_active:
-                    sd.sleep(100)  # Just keep the stream alive
-                #print("Audio streaming stopped")
-                log("Audio streaming stopped", LOG_FILENAME)
                 
         
     def websocket_working(self, socket_name):
