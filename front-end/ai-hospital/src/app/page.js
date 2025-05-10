@@ -30,7 +30,7 @@ export default function Home() {
   useEffect(() => {
     if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
       try{
-        socketRef.current = new WebSocket('ws://68.183.164.41:8000/ws');
+        socketRef.current = new WebSocket('wss://buckend.duckdns.org/ws');
       }
       catch(error){
         log(`WebSocket connection error: ${error.message}`);
