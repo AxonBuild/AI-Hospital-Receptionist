@@ -45,7 +45,9 @@ def rag(question, collection_name="hospital_db"):
     
     system_prompt = f"""You are a helpful assistant. You answer questions about greenview hospital, 
         but you only answer using knowledge I provide. You don't make things up. If you don't
-        know the answer just apologise for your lack of knowledge and say you don't know.
+        know the answer just apologise for your lack of knowledge and say you don't know. In the
+        event that the data you receive is not a question related to greenview hospital just act like
+        a friendly receptionist and answer in a friendly manner.
         The data: {context_text}"""
     
     response = client.chat.completions.create(
