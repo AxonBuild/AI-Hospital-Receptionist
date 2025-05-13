@@ -121,8 +121,7 @@ def rag2(question, collection_name="hospital_db"):
     - Treat these as general inquiries requiring friendly assistance
     - Do not tell me about requesting translation services
     
-    Context data about Greenview Medical Centre:
-    {context_text}
+    #Context: {context_text}
     """
     
     event = {
