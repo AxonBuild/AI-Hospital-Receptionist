@@ -13,6 +13,9 @@ import uuid
 import traceback
 from typing import Dict
 import asyncio
+from dotenv import load_dotenv
+import os
+import requests
 
 #LOG_FILENAME = "server_logs.txt"
 
@@ -44,6 +47,26 @@ disconnected_clients = set()
 async def get():
     logger.info("Root endpoint accessed")
     return {"message": "WebSocket Audio Server"}
+
+@app.get("/getEphemeralKey")
+async def get_ephemeral_key():
+    load_dotenv()
+    OPEN_AI_API_KEY = os.getenv("OPENAI_API_KEY")
+    url = "https://api.openai.com/v1/realtime/sessions"
+    headers = {
+        "Authorization": f"Bearer {OPEN_AI_API_KEY}",
+        "Content-Type": "application/json",
+        "OpenAI-Beta": "realtime=v1"
+    }
+    payload = {
+        "model": "gpt-4o-realtime-preview-2024-12-17",
+        "voice": "verse"
+    }
+
+    response = requests.post(url, headers=headers, json=payload)
+    response = response.json()
+    ephemeral_key = response["client_secret"]["value"]
+    return ephemeral_key
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):

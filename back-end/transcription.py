@@ -50,7 +50,7 @@ class OpenAITranscriber:
             "event_data": "connection established"
         }
         await self.client_websocket.send_json(message)
-    
+
     def is_openai_connected(self):
         return (self.openai_ws and hasattr(self.openai_ws, 'sock') 
             and self.openai_ws.sock and self.openai_ws.sock.connected)
