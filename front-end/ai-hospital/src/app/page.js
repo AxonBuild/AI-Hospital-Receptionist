@@ -27,10 +27,29 @@ export default function Home() {
     setLogMessages(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${message}`]);
   };
 
+  async function getEphemeralKey()
+  {
+    //baseUrl = 'https://buckend.duckdns.org'
+    const baseUrl = 'http://localhost:8000'
+    const response = await fetch(`${baseUrl}/getEphemeralKey`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+    
+    const ephemeralKey = await response.text();
+    console.log('Ephemeral key received:', ephemeralKey);
+  }
   useEffect(() => {
     if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
       try{
-        socketRef.current = new WebSocket('wss://buckend.duckdns.org/ws');
+        //socketRef.current = new WebSocket('wss://buckend.duckdns.org/ws');
+        socketRef.current = new WebSocket('ws://localhost:8000/ws');
       }
       catch(error){
         log(`WebSocket connection error: ${error.message}`);
@@ -45,6 +64,7 @@ export default function Home() {
           if (data.event_type === "checking connectivity" && data.event_data === "connection established") {
             setConnectionReady(true);
             log("Server connection confirmed - ready to record");
+            getEphemeralKey()
           }
 
           if (data.event_type === "audio_response_transmitting") {

@@ -10,8 +10,6 @@ output.wav
 error.json
 logs.txt
 *.pyc
-package.json
-package-lock.json
 logs.txt
 b64audio.txt
 server_logs.txt
@@ -34,3 +32,5 @@ test3.py
 test4.py
 testing.py
 output.wav
+front-end/ai-hospital/package-lock.json
+front-end/ai-hospital/package.json
