@@ -87,7 +87,7 @@ export default function Home() {
       catch(error){
         log(`WebSocket connection error: ${error.message}`);
       }
-      socketRef.current = new WebSocket('ws://localhost:8000/ws');
+      socketRef.current = new WebSocket('wss://hospitalreceptionist.axonbuild.com/ws');
       socketRef.current.onmessage = (event) => {
         log(`Received WebSocket message: ${event.data.substring(0, 50)}...`);
         try {
