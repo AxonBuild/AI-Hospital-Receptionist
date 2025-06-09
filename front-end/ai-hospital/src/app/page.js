@@ -17,7 +17,7 @@ export default function Home() {
   const sourceNodeRef = useRef(null);
   const processorRef = useRef(null);
   const nodesConnectedRef = useRef(false);
-  
+  var open_ai_pc = useRef(null);
   // Audio queue and playback state
   const audioQueueRef = useRef([]);
   const isPlayingRef = useRef(false);
@@ -30,7 +30,7 @@ export default function Home() {
   async function getEphemeralKey()
   {
     //baseUrl = 'https://buckend.duckdns.org'
-    const baseUrl = 'http://localhost:8000'
+    const baseUrl = 'https://hospitalreceptionist.axonbuild.com'
     const response = await fetch(`${baseUrl}/getEphemeralKey`, {
       method: 'GET',
       headers: {
@@ -43,18 +43,51 @@ export default function Home() {
     }
     
     const ephemeralKey = await response.text();
-    console.log('Ephemeral key received:', ephemeralKey);
+    console.log("Ephemeral Key", ephemeralKey);
+    open_ai_pc = new RTCPeerConnection();
+    //audio Element created to play incoming audio from OpenAI
+    const audioEl = document.createElement("audio");
+    audioEl.autoplay = true;
+    open_ai_pc.ontrack = e => audioEl.srcObject = e.streams[0];
+    //mic element is created to get user's mic input and send to OpenAI
+    const ms = await navigator.mediaDevices.getUserMedia({ audio: true });
+    open_ai_pc.addTrack(ms.getTracks()[0]);
+    // Set up data channel for sending and receiving events
+    const dataChannel = open_ai_pc.createDataChannel("oai-events");
+    dataChannel.addEventListener("message", (e) => {
+      // Realtime server events appear here!
+      console.log(e);
+    });
+    // Start the session using the Session Description Protocol (SDP)
+    const offer = await open_ai_pc.createOffer();
+    await open_ai_pc.setLocalDescription(offer);
+
+    const URL = "https://api.openai.com/v1/realtime";
+    const model = "gpt-4o-mini-realtime-preview";
+    const sdpResponse = await fetch(`${URL}?model=${model}`, {
+      method: "POST",
+      body: offer.sdp,
+      headers: {
+        Authorization: `Bearer ${ephemeralKey}`,
+        "Content-Type": "application/sdp"
+      },
+    });
+    const answer = {
+    type: "answer",
+    sdp: await sdpResponse.text(),
+  };
+  await open_ai_pc.setRemoteDescription(answer);
   }
-  useEffect(() => {
+  useEffect( () => {
     if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
       try{
         //socketRef.current = new WebSocket('wss://buckend.duckdns.org/ws');
-        socketRef.current = new WebSocket('ws://localhost:8000/ws');
+        //socketRef.current = new WebSocket('ws://localhost:8000/ws');
       }
       catch(error){
         log(`WebSocket connection error: ${error.message}`);
       }
-      //socketRef.current = new WebSocket('ws://localhost:8000/ws');
+      socketRef.current = new WebSocket('ws://localhost:8000/ws');
       socketRef.current.onmessage = (event) => {
         log(`Received WebSocket message: ${event.data.substring(0, 50)}...`);
         try {
@@ -64,7 +97,7 @@ export default function Home() {
           if (data.event_type === "checking connectivity" && data.event_data === "connection established") {
             setConnectionReady(true);
             log("Server connection confirmed - ready to record");
-            getEphemeralKey()
+            getEphemeralKey();
           }
 
           if (data.event_type === "audio_response_transmitting") {
@@ -74,7 +107,7 @@ export default function Home() {
           log(`Error handling message: ${e.message}`);
         }
       };
-
+      
       socketRef.current.onerror = (error) => {
         log(`WebSocket error: ${error.message || "Unknown error"}`);
       };
@@ -83,7 +116,7 @@ export default function Home() {
         log(`WebSocket closed: ${event.code} ${event.reason}`);
       };
 
-      log("WebSocket initialized - waiting for confirmation");
+      log("WebSockets initialized - waiting for confirmation");
     }
 
     return () => {
